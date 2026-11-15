@@ -1,0 +1,18 @@
+{
+  "name": "poketrack",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "pnpm -r typecheck",
+    "jobs": "pnpm --filter @poketrack/jobs cli",
+    "db:generate": "pnpm --filter @poketrack/db generate",
+    "db:migrate": "pnpm --filter @poketrack/db migrate"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
