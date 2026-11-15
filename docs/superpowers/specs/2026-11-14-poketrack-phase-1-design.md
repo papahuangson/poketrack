@@ -159,3 +159,17 @@ HB supplies: a Neon project (main and dev connection strings), a pokemontcg.io A
 - Styling approach and visual design, within "HB owns the markup and styles".
 - Search ranking details, batch sizes, retry counts, timeouts.
 - Friendly labels for variants.
+
+## Amendment, 2026-11-15: card data moved to TCGdex
+
+pokemontcg.io closed new API key registrations (existing keys work until 2027-03-01) and its successor Scrydex has no free plan, so HB chose to switch to TCGdex for now. Everything above that names pokemontcg.io now applies to TCGdex, with these differences:
+
+- No API key and no `POKEMONTCG_API_KEY` variable.
+- Card and set IDs are TCGdex's (`sv03.5-199`, set `sv03.5`).
+- A full card, including prices, is one request per card. A set page lists its cards. The provider fetches up to 8 at a time. A full backfill is about 22,000 requests.
+- Variant keys are TCGplayer's as TCGdex reports them, converted to the same naming as before (`reverse-holofoil` becomes `reverseHolofoil`). A card with no TCGplayer prices falls back to its printed variants.
+- Sets carry no update stamp, so incremental sync keys on the set's card count **(call)**.
+- Pokémon TCG Pocket sets are excluded **(call)**.
+- `pnpm jobs backfill` resumes by default; `--full` forces a reload **(call)**.
+
+Verified against the live API on 2026-11-15 by running the provider code in a browser: 206 sets, 21,660 cards, and TCGplayer prices on 1,169 of 1,185 sampled cards.

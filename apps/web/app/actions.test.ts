@@ -12,7 +12,7 @@ vi.mock("@/lib/db", () => ({ getDb: () => db }))
 vi.mock("@poketrack/jobs", async (original) => ({
   ...(await original<typeof import("@poketrack/jobs")>()),
   snapshotCard: (...args: unknown[]) => snapshotCard(...args),
-  createPokemonTcgIo: (opts: unknown) => {
+  createTcgdex: (opts: unknown) => {
     providerOptions(opts)
     return { provider: true }
   },

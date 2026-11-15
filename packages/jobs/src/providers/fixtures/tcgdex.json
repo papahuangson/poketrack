@@ -1,0 +1,620 @@
+{
+ "_note": "Trimmed copies of live api.tcgdex.net/v2/en responses captured 2026-11-15. Values are real; unused fields (illustrator, dexId, variants_detailed, boosters, ...) were dropped.",
+ "list": [
+  {
+   "id": "base1",
+   "name": "Base Set",
+   "logo": "https://assets.tcgdex.net/en/base/base1/logo",
+   "cardCount": {
+    "total": 102,
+    "official": 102
+   }
+  },
+  {
+   "id": "sv03.5",
+   "name": "151",
+   "logo": "https://assets.tcgdex.net/en/sv/sv03.5/logo",
+   "symbol": "https://assets.tcgdex.net/univ/sv/sv03.5/symbol",
+   "cardCount": {
+    "total": 207,
+    "official": 165
+   }
+  },
+  {
+   "id": "A1",
+   "name": "Genetic Apex",
+   "logo": "https://assets.tcgdex.net/en/tcgp/A1/logo",
+   "symbol": "https://assets.tcgdex.net/univ/tcgp/A1/symbol",
+   "cardCount": {
+    "total": 286,
+    "official": 226
+   }
+  }
+ ],
+ "sets": {
+  "sv03.5": {
+   "cardCount": {
+    "firstEd": 0,
+    "holo": 90,
+    "normal": 135,
+    "official": 165,
+    "reverse": 158,
+    "total": 207
+   },
+   "cards": [
+    {
+     "id": "sv03.5-025",
+     "image": "https://assets.tcgdex.net/en/sv/sv03.5/025",
+     "localId": "025",
+     "name": "Pikachu"
+    },
+    {
+     "id": "sv03.5-161",
+     "image": "https://assets.tcgdex.net/en/sv/sv03.5/161",
+     "localId": "161",
+     "name": "Giovanni's Charisma"
+    },
+    {
+     "id": "sv03.5-199",
+     "image": "https://assets.tcgdex.net/en/sv/sv03.5/199",
+     "localId": "199",
+     "name": "Charizard ex"
+    }
+   ],
+   "id": "sv03.5",
+   "legal": {
+    "expanded": true,
+    "standard": false
+   },
+   "logo": "https://assets.tcgdex.net/en/sv/sv03.5/logo",
+   "name": "151",
+   "releaseDate": "2023-09-22",
+   "serie": {
+    "id": "sv",
+    "name": "Scarlet & Violet"
+   },
+   "symbol": "https://assets.tcgdex.net/univ/sv/sv03.5/symbol",
+   "abbreviation": {
+    "official": "MEW"
+   }
+  },
+  "base1": {
+   "cardCount": {
+    "firstEd": 103,
+    "holo": 64,
+    "normal": 351,
+    "official": 102,
+    "reverse": 0,
+    "total": 102
+   },
+   "cards": [
+    {
+     "id": "base1-4",
+     "image": "https://assets.tcgdex.net/en/base/base1/4",
+     "localId": "4",
+     "name": "Charizard"
+    }
+   ],
+   "id": "base1",
+   "legal": {
+    "expanded": false,
+    "standard": false
+   },
+   "logo": "https://assets.tcgdex.net/en/base/base1/logo",
+   "name": "Base Set",
+   "releaseDate": "1999-01-09",
+   "serie": {
+    "id": "base",
+    "name": "Base"
+   },
+   "tcgOnline": "BS",
+   "abbreviation": {
+    "official": "BS"
+   }
+  },
+  "A1": {
+   "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 0,
+    "official": 226,
+    "reverse": 0,
+    "total": 286
+   },
+   "cards": [
+    {
+     "id": "A1-001",
+     "image": "https://assets.tcgdex.net/en/tcgp/A1/001",
+     "localId": "001",
+     "name": "Bulbasaur"
+    }
+   ],
+   "id": "A1",
+   "legal": {
+    "expanded": false,
+    "standard": false
+   },
+   "logo": "https://assets.tcgdex.net/en/tcgp/A1/logo",
+   "name": "Genetic Apex",
+   "releaseDate": "2024-10-30",
+   "serie": {
+    "id": "tcgp",
+    "name": "Pokémon TCG Pocket"
+   },
+   "symbol": "https://assets.tcgdex.net/univ/tcgp/A1/symbol"
+  }
+ },
+ "cards": {
+  "sv03.5-199": {
+   "category": "Pokemon",
+   "id": "sv03.5-199",
+   "image": "https://assets.tcgdex.net/en/sv/sv03.5/199",
+   "localId": "199",
+   "name": "Charizard ex",
+   "rarity": "Special illustration rare",
+   "set": {
+    "cardCount": {
+     "official": 165,
+     "total": 207
+    },
+    "id": "sv03.5",
+    "logo": "https://assets.tcgdex.net/en/sv/sv03.5/logo",
+    "name": "151",
+    "symbol": "https://assets.tcgdex.net/univ/sv/sv03.5/symbol"
+   },
+   "variants": {
+    "firstEdition": false,
+    "holo": true,
+    "normal": false,
+    "reverse": false,
+    "wPromo": false
+   },
+   "attacks": [
+    {
+     "cost": [
+      "Fire"
+     ],
+     "name": "Brave Wing",
+     "effect": "If this Pokémon has any damage counters on it, this attack does 100 more damage.",
+     "damage": "60+"
+    },
+    {
+     "cost": [
+      "Fire",
+      "Fire",
+      "Fire",
+      "Fire"
+     ],
+     "name": "Explosive Vortex",
+     "effect": "Discard 3 Energy from this Pokémon.",
+     "damage": 330
+    }
+   ],
+   "regulationMark": "G",
+   "legal": {
+    "standard": false,
+    "expanded": true
+   },
+   "updated": "2026-06-09T12:54:48+01:00",
+   "pricing": {
+    "cardmarket": {
+     "updated": "2026-11-14T22:16:19.056Z",
+     "unit": "EUR",
+     "idProduct": 733794,
+     "avg": 336.32,
+     "low": 180,
+     "trend": 343.78,
+     "avg1": null,
+     "avg7": null,
+     "avg30": null,
+     "avg-holo": null,
+     "low-holo": null,
+     "trend-holo": 0,
+     "avg1-holo": null,
+     "avg7-holo": null,
+     "avg30-holo": null
+    },
+    "tcgplayer": {
+     "unit": "USD",
+     "updated": "2026-11-14T22:16:33.353Z",
+     "holofoil": {
+      "productId": 517045,
+      "lowPrice": 247.72,
+      "midPrice": 333.07,
+      "highPrice": 10000,
+      "marketPrice": 292.22,
+      "directLowPrice": 270.2
+     }
+    }
+   }
+  },
+  "sv03.5-025": {
+   "category": "Pokemon",
+   "id": "sv03.5-025",
+   "image": "https://assets.tcgdex.net/en/sv/sv03.5/025",
+   "localId": "025",
+   "name": "Pikachu",
+   "rarity": "Common",
+   "set": {
+    "cardCount": {
+     "official": 165,
+     "total": 207
+    },
+    "id": "sv03.5",
+    "logo": "https://assets.tcgdex.net/en/sv/sv03.5/logo",
+    "name": "151",
+    "symbol": "https://assets.tcgdex.net/univ/sv/sv03.5/symbol"
+   },
+   "variants": {
+    "firstEdition": false,
+    "holo": false,
+    "normal": true,
+    "reverse": true,
+    "wPromo": false
+   },
+   "attacks": [
+    {
+     "cost": [
+      "Lightning"
+     ],
+     "name": "Charge",
+     "effect": "Search your deck for a Basic {L} Energy card and attach it to this Pokémon. Then, shuffle your deck."
+    },
+    {
+     "cost": [
+      "Lightning",
+      "Lightning",
+      "Colorless"
+     ],
+     "name": "Pika Punch",
+     "damage": 50
+    }
+   ],
+   "regulationMark": "G",
+   "legal": {
+    "standard": false,
+    "expanded": true
+   },
+   "updated": "2026-08-14T19:11:56+01:00",
+   "pricing": {
+    "cardmarket": {
+     "updated": "2026-11-14T22:16:19.056Z",
+     "unit": "EUR",
+     "idProduct": 733620,
+     "avg": 0.15,
+     "low": 0.02,
+     "trend": 0.13,
+     "avg1": null,
+     "avg7": null,
+     "avg30": null,
+     "avg-holo": null,
+     "low-holo": null,
+     "trend-holo": 0.66,
+     "avg1-holo": null,
+     "avg7-holo": null,
+     "avg30-holo": null
+    },
+    "tcgplayer": {
+     "unit": "USD",
+     "updated": "2026-11-14T22:16:33.353Z",
+     "reverse-holofoil": {
+      "productId": 517033,
+      "lowPrice": 0.2,
+      "midPrice": 0.78,
+      "highPrice": 75,
+      "marketPrice": 0.66,
+      "directLowPrice": 0.69
+     },
+     "normal": {
+      "productId": 517033,
+      "lowPrice": 0.05,
+      "midPrice": 0.3,
+      "highPrice": 20,
+      "marketPrice": 0.29,
+      "directLowPrice": 0.07
+     }
+    }
+   }
+  },
+  "sv03.5-161": {
+   "category": "Trainer",
+   "id": "sv03.5-161",
+   "image": "https://assets.tcgdex.net/en/sv/sv03.5/161",
+   "localId": "161",
+   "name": "Giovanni's Charisma",
+   "rarity": "Uncommon",
+   "set": {
+    "cardCount": {
+     "official": 165,
+     "total": 207
+    },
+    "id": "sv03.5",
+    "logo": "https://assets.tcgdex.net/en/sv/sv03.5/logo",
+    "name": "151",
+    "symbol": "https://assets.tcgdex.net/univ/sv/sv03.5/symbol"
+   },
+   "variants": {
+    "firstEdition": false,
+    "holo": false,
+    "normal": true,
+    "reverse": true,
+    "wPromo": false
+   },
+   "effect": "Put an Energy attached to your opponent's Active Pokémon into their hand. If you do, attach an Energy card from your hand to your Active Pokémon.",
+   "trainerType": "Supporter",
+   "regulationMark": "G",
+   "legal": {
+    "standard": false,
+    "expanded": true
+   },
+   "updated": "2026-09-30T09:41:20+01:00",
+   "pricing": {
+    "cardmarket": {
+     "updated": "2026-11-14T22:16:19.056Z",
+     "unit": "EUR",
+     "idProduct": 733756,
+     "avg": 0.09,
+     "low": 0.02,
+     "trend": 0.07,
+     "avg1": null,
+     "avg7": null,
+     "avg30": null,
+     "avg-holo": null,
+     "low-holo": null,
+     "trend-holo": 1.35,
+     "avg1-holo": null,
+     "avg7-holo": null,
+     "avg30-holo": null
+    },
+    "tcgplayer": {
+     "unit": "USD",
+     "updated": "2026-11-14T22:16:33.353Z",
+     "normal": {
+      "productId": 516723,
+      "lowPrice": 0.01,
+      "midPrice": 0.23,
+      "highPrice": 18.14,
+      "marketPrice": 0.23,
+      "directLowPrice": 0.03
+     },
+     "reverse-holofoil": {
+      "productId": 516723,
+      "lowPrice": 0.46,
+      "midPrice": 0.95,
+      "highPrice": 25,
+      "marketPrice": 0.8,
+      "directLowPrice": 0.89
+     }
+    }
+   }
+  },
+  "base1-4": {
+   "category": "Pokemon",
+   "id": "base1-4",
+   "image": "https://assets.tcgdex.net/en/base/base1/4",
+   "localId": "4",
+   "name": "Charizard",
+   "rarity": "Rare",
+   "set": {
+    "cardCount": {
+     "official": 102,
+     "total": 102
+    },
+    "id": "base1",
+    "logo": "https://assets.tcgdex.net/en/base/base1/logo",
+    "name": "Base Set"
+   },
+   "variants": {
+    "firstEdition": true,
+    "holo": true,
+    "normal": false,
+    "reverse": false,
+    "wPromo": false
+   },
+   "abilities": [
+    {
+     "type": "Pokemon Power",
+     "name": "Energy Burn",
+     "effect": "As often as you like during your turn (before your attack), you may turn all Energy attached to Charizard into Fire Energy for the rest of the turn. This power can't be used if Charizard is Asleep, Confused, or Paralyzed."
+    }
+   ],
+   "attacks": [
+    {
+     "cost": [
+      "Fire",
+      "Fire",
+      "Fire",
+      "Fire"
+     ],
+     "name": "Fire Spin",
+     "effect": "Discard 2 Energy cards attached to Charizard in order to use this attack.",
+     "damage": 100
+    }
+   ],
+   "legal": {
+    "standard": false,
+    "expanded": false
+   },
+   "updated": "2026-09-04T23:45:25+01:00",
+   "pricing": {
+    "cardmarket": {
+     "updated": "2026-11-14T22:16:19.056Z",
+     "unit": "EUR",
+     "idProduct": 273699,
+     "avg": 453.87,
+     "low": 90,
+     "trend": 385.83,
+     "avg1": null,
+     "avg7": null,
+     "avg30": null,
+     "avg-holo": null,
+     "low-holo": null,
+     "trend-holo": 123.63,
+     "avg1-holo": null,
+     "avg7-holo": null,
+     "avg30-holo": null
+    },
+    "tcgplayer": {
+     "unit": "USD",
+     "updated": "2026-11-14T22:16:19.475Z",
+     "holofoil": {
+      "productId": 42382,
+      "lowPrice": 499.99,
+      "midPrice": 697.55,
+      "highPrice": 3499.1,
+      "marketPrice": 987.13,
+      "directLowPrice": 1131.03
+     }
+    }
+   }
+  },
+  "neo1-9": {
+   "category": "Pokemon",
+   "id": "neo1-9",
+   "image": "https://assets.tcgdex.net/en/neo/neo1/9",
+   "localId": "9",
+   "name": "Lugia",
+   "rarity": "Rare",
+   "set": {
+    "cardCount": {
+     "official": 111,
+     "total": 111
+    },
+    "id": "neo1",
+    "logo": "https://assets.tcgdex.net/en/neo/neo1/logo",
+    "name": "Neo Genesis",
+    "symbol": "https://assets.tcgdex.net/univ/neo/neo1/symbol"
+   },
+   "variants": {
+    "firstEdition": true,
+    "holo": true,
+    "normal": false,
+    "reverse": false,
+    "wPromo": false
+   },
+   "attacks": [
+    {
+     "cost": [
+      "Fire",
+      "Water",
+      "Lightning"
+     ],
+     "name": "Elemental Blast",
+     "effect": "Discard a Energy card, a Energy card, and a Energy card attached to Lugia in order to use this attack.",
+     "damage": 90
+    }
+   ],
+   "legal": {
+    "standard": false,
+    "expanded": false
+   },
+   "updated": "2026-08-27T17:26:22+01:00",
+   "pricing": {
+    "cardmarket": {
+     "updated": "2026-11-14T22:16:19.056Z",
+     "unit": "EUR",
+     "idProduct": 274409,
+     "avg": 545.29,
+     "low": 40,
+     "trend": 765.94,
+     "avg1": null,
+     "avg7": null,
+     "avg30": null,
+     "avg-holo": null,
+     "low-holo": null,
+     "trend-holo": 48.89,
+     "avg1-holo": null,
+     "avg7-holo": null,
+     "avg30-holo": null
+    },
+    "tcgplayer": {
+     "unit": "USD",
+     "updated": "2026-11-14T22:16:20.160Z",
+     "1st-edition-holofoil": {
+      "productId": 86903,
+      "lowPrice": 1500,
+      "midPrice": 6800,
+      "highPrice": 10000,
+      "marketPrice": 1300,
+      "directLowPrice": null
+     },
+     "unlimited-holofoil": {
+      "productId": 86903,
+      "lowPrice": 299.01,
+      "midPrice": 404.82,
+      "highPrice": 899.99,
+      "marketPrice": 526.98,
+      "directLowPrice": null
+     }
+    }
+   }
+  },
+  "svp-500": {
+   "category": "Pokemon",
+   "id": "svp-500",
+   "localId": "500",
+   "name": "Terapagos & Friends",
+   "rarity": "Promo",
+   "set": {
+    "cardCount": {
+     "official": 225,
+     "total": 226
+    },
+    "id": "svp",
+    "name": "SVP Black Star Promos"
+   },
+   "variants": {
+    "firstEdition": false,
+    "holo": false,
+    "normal": true,
+    "reverse": false,
+    "wPromo": false
+   },
+   "attacks": [
+    {
+     "cost": [
+      "Colorless",
+      "Colorless",
+      "Colorless",
+      "Colorless"
+     ],
+     "name": "A Grand Adventure with Friends",
+     "effect": "This attack does 100 damage for each of your Pokémon in play.",
+     "damage": "100×"
+    }
+   ],
+   "legal": {
+    "standard": false,
+    "expanded": true
+   },
+   "updated": "2026-06-17T18:43:13+01:00",
+   "pricing": {
+    "cardmarket": {
+     "updated": "2026-11-14T22:16:19.056Z",
+     "unit": "EUR",
+     "idProduct": 784943,
+     "avg": 1.47,
+     "low": 0.3,
+     "trend": 1.47,
+     "avg1": null,
+     "avg7": null,
+     "avg30": null,
+     "avg-holo": null,
+     "low-holo": null,
+     "trend-holo": 0,
+     "avg1-holo": null,
+     "avg7-holo": null,
+     "avg30-holo": null
+    },
+    "tcgplayer": null
+   }
+  }
+ },
+ "notFound": {
+  "type": "https://tcgdex.dev/errors/not-found",
+  "title": "The resource you are trying to reach does not exists",
+  "status": 404,
+  "endpoint": "/en/cards/nope-999",
+  "method": "GET"
+ }
+}

@@ -1,7 +1,7 @@
 "use server"
 
 import { chicagoDate, priceSnapshots } from "@poketrack/db"
-import { createPokemonTcgIo, snapshotCard } from "@poketrack/jobs"
+import { createTcgdex, snapshotCard } from "@poketrack/jobs"
 import { and, eq } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { addItem, defaultVariant, removeItem, updateItem, type AddInput, type EditInput } from "@/lib/collection"
@@ -31,7 +31,7 @@ async function priceIfMissing(cardId: string): Promise<void> {
     .limit(1)
   if (existing) return
   try {
-    await snapshotCard(db, createPokemonTcgIo({ apiKey: process.env.POKEMONTCG_API_KEY, attempts: 1, timeoutMs: 6000 }), cardId, today)
+    await snapshotCard(db, createTcgdex({ attempts: 1, timeoutMs: 6000 }), cardId, today)
   } catch (error) {
     console.error(`Could not fetch a price for ${cardId}`, error)
   }

@@ -1,4 +1,4 @@
-import { createPokemonTcgIo, runNightly } from "@poketrack/jobs"
+import { createTcgdex, runNightly } from "@poketrack/jobs"
 import { timingSafeEqual } from "node:crypto"
 import { getDb } from "@/lib/db"
 
@@ -16,7 +16,7 @@ function authorized(request: Request): boolean {
 export async function GET(request: Request): Promise<Response> {
   if (!authorized(request)) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const provider = createPokemonTcgIo({ apiKey: process.env.POKEMONTCG_API_KEY })
+  const provider = createTcgdex()
   const result = await runNightly(getDb(), provider, {
     runner: "vercel",
     gitSha: process.env.VERCEL_GIT_COMMIT_SHA || "unknown",

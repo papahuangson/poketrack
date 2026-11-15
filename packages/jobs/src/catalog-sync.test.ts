@@ -74,3 +74,12 @@ test("running again does not duplicate rows and overwrites catalog fields", asyn
   const [card] = await db.select().from(cards).where(eq(cards.id, "a-2"))
   expect(card).toMatchObject({ rarity: "Rare", variants: ["holofoil"] })
 })
+
+test("progress is reported once per fetched set", async () => {
+  const seen: string[] = []
+  await syncCatalog(db, provider, { onSet: (p) => seen.push(`${p.setId} ${p.cards} ${p.done}/${p.total}`) })
+  expect(seen).toEqual(["a 2 1/2", "b 1 2/2"])
+  seen.length = 0
+  await syncCatalog(db, provider, { onSet: (p) => seen.push(p.setId) })
+  expect(seen).toEqual([])
+})

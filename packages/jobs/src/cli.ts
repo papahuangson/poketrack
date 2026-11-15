@@ -1,7 +1,7 @@
 import { createDb, loadDotEnv, RUNNERS, type Runner } from "@poketrack/db"
 import { syncCatalog } from "./catalog-sync"
 import { runNightly } from "./nightly"
-import { createPokemonTcgIo } from "./providers/pokemontcgio"
+import { createTcgdex } from "./providers/tcgdex"
 
 function requireEnv(name: string): string {
   const value = process.env[name]
@@ -15,19 +15,20 @@ function requireEnv(name: string): string {
 async function main(): Promise<number> {
   const command = process.argv[2]
   if (command !== "backfill" && command !== "nightly") {
-    console.error("Usage: jobs <backfill|nightly>")
+    console.error("Usage: jobs <backfill [--full]|nightly>")
     return 2
   }
 
   loadDotEnv()
   const db = createDb(requireEnv("DATABASE_URL"))
-  if (!process.env.POKEMONTCG_API_KEY) {
-    console.warn("POKEMONTCG_API_KEY is not set. Requests without a key are heavily rate limited and a backfill will likely fail.")
-  }
-  const provider = createPokemonTcgIo({ apiKey: process.env.POKEMONTCG_API_KEY })
+  const provider = createTcgdex()
 
   if (command === "backfill") {
-    const result = await syncCatalog(db, provider, { full: true })
+    // Without --full, sets that already loaded are skipped, so a failed backfill resumes where it stopped.
+    const result = await syncCatalog(db, provider, {
+      full: process.argv.includes("--full"),
+      onSet: (p) => console.log(`[${p.done}/${p.total}] ${p.setId}: ${p.cards} cards`),
+    })
     console.log(`Backfill done: ${result.setsFetched} sets, ${result.cardsUpserted} cards`)
     return 0
   }

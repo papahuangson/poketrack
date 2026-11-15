@@ -47,7 +47,13 @@ async function upsertCards(db: Db, catalogCards: CatalogCard[]): Promise<number>
   return catalogCards.length
 }
 
-async function syncCatalog(db: Db, provider: CatalogProvider, opts: { full?: boolean } = {}): Promise<SyncResult> {
+type SyncProgress = { setId: string; cards: number; done: number; total: number }
+
+async function syncCatalog(
+  db: Db,
+  provider: CatalogProvider,
+  opts: { full?: boolean; onSet?: (progress: SyncProgress) => void } = {},
+): Promise<SyncResult> {
   const remote = await provider.listSets()
   const stored = new Map(
     (await db.select({ id: sets.id, providerUpdatedAt: sets.providerUpdatedAt }).from(sets)).map((s) => [
@@ -74,12 +80,14 @@ async function syncCatalog(db: Db, provider: CatalogProvider, opts: { full?: boo
 
     if (!opts.full && stored.get(set.id) === set.updatedAt) continue
 
-    result.cardsUpserted += await upsertCards(db, await provider.listCardsInSet(set.id))
+    const upserted = await upsertCards(db, await provider.listCardsInSet(set.id))
+    result.cardsUpserted += upserted
     await db.update(sets).set({ providerUpdatedAt: set.updatedAt }).where(eq(sets.id, set.id))
     result.setsFetched++
+    opts.onSet?.({ setId: set.id, cards: upserted, done: result.setsUpserted, total: remote.length })
   }
   return result
 }
 
 export { syncCatalog, upsertCards }
-export type { SyncResult }
+export type { SyncProgress, SyncResult }

@@ -4,7 +4,7 @@ const runNightly = vi.fn()
 
 vi.mock("@poketrack/jobs", () => ({
   runNightly: (...args: unknown[]) => runNightly(...args),
-  createPokemonTcgIo: () => ({ provider: true }),
+  createTcgdex: () => ({ provider: true }),
 }))
 vi.mock("@/lib/db", () => ({ getDb: () => ({ db: true }) }))
 
