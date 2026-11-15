@@ -15,7 +15,7 @@ type Props = {
 
 function LabeledSelect({ label, value, options, onValueChange, name, className }: Props) {
   return (
-    <div className={`flex flex-col gap-1 ${className ?? ""}`}>
+    <div className={`flex min-w-0 flex-col gap-1 ${className ?? ""}`}>
       <Select
         items={options}
         value={value}

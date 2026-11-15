@@ -14,14 +14,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <header className="border-b border-line bg-surface">
           <div className="mx-auto flex max-w-5xl items-baseline gap-8 px-4 py-3 sm:px-6">
-            <Link href="/" className="font-display text-xl font-semibold tracking-tight">
+            <Link href="/" className="font-display text-xl font-semibold tracking-tight no-underline">
               Poketrack
             </Link>
             <nav aria-label="Main" className="flex gap-6 text-sm">
-              <Link href="/" className="underline-offset-4 hover:underline">
+              <Link href="/" className="no-underline underline-offset-4 hover:underline">
                 Collection
               </Link>
-              <Link href="/settings" className="underline-offset-4 hover:underline">
+              <Link href="/settings" className="no-underline underline-offset-4 hover:underline">
                 Settings
               </Link>
             </nav>

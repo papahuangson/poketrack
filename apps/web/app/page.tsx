@@ -1,5 +1,7 @@
+import { AddCard } from "@/components/collection/add-card"
 import { CollectionList } from "@/components/collection/collection-list"
 import { Filters } from "@/components/collection/filters"
+import { RowMenu } from "@/components/collection/row-menu"
 import { TotalHeader } from "@/components/collection/total-header"
 import { collectionFilterOptions, collectionTotals, listCollection } from "@/lib/collection"
 import { getDb } from "@/lib/db"
@@ -19,13 +21,14 @@ export default async function CollectionPage({ searchParams }: Props) {
   return (
     <div className="space-y-8">
       <TotalHeader {...totals} />
+      <AddCard />
       <section aria-label="Your cards" className="space-y-4">
         <Filters
           sets={options.sets}
           variants={options.variants}
           current={{ set: filters.setId, variant: filters.variant, condition: filters.condition, sort: filters.sort }}
         />
-        <CollectionList rows={rows} filtered={filtered} />
+        <CollectionList rows={rows} filtered={filtered} renderMenu={(row) => <RowMenu row={row} />} />
       </section>
     </div>
   )

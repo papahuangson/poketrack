@@ -1,6 +1,11 @@
-@layer ui-sdk;
+/*
+  ui-sdk injects its behavior CSS in a layer named ui-sdk, which it declares before any stylesheet,
+  so that layer always sits below Tailwind's base reset. web.css ships in the same layer, so it is
+  imported into a layer of its own here, above the reset and below utilities.
+*/
+@layer ui-sdk, theme, base, ui-kit, components, utilities;
 @import "tailwindcss";
-@import "@ui-sdk/core/web.css";
+@import "@ui-sdk/core/web.css" layer(ui-kit);
 
 @theme {
   --color-paper: #eef2f6;
@@ -45,4 +50,10 @@ body {
 :focus-visible {
   outline: 2px solid var(--color-ink);
   outline-offset: 2px;
+}
+
+/* web.css gives select triggers a 192px minimum, wider than a two-column phone grid. */
+[data-slot="select-trigger"] {
+  min-width: 0;
+  width: 100%;
 }
