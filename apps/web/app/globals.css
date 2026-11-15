@@ -1,1 +1,48 @@
+@layer ui-sdk;
 @import "tailwindcss";
+@import "@ui-sdk/core/web.css";
+
+@theme {
+  --color-paper: #eef2f6;
+  --color-surface: #ffffff;
+  --color-ink: #14213d;
+  --color-ink-soft: #56627a;
+  --color-line: #c5cedb;
+  --color-energy: #f2b705;
+  --color-up: #17713f;
+  --color-down: #b3261e;
+  --font-display: Bahnschrift, "DIN Alternate", "Avenir Next Condensed", "Roboto Condensed", "Arial Narrow", sans-serif;
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+}
+
+:root {
+  color-scheme: light;
+  --ui-background: var(--color-surface);
+  --ui-foreground: var(--color-ink);
+  --ui-muted: #e3e9f1;
+  --ui-muted-foreground: var(--color-ink-soft);
+  --ui-border: var(--color-line);
+  --ui-input: #8491a6;
+  --ui-primary: var(--color-ink);
+  --ui-primary-foreground: #ffffff;
+  --ui-destructive: var(--color-down);
+  --ui-ring: var(--color-ink);
+  --ui-ring-border: var(--color-ink);
+  --ui-radius: 6px;
+  --ui-font-sans: var(--font-sans);
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
