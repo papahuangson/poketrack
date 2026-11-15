@@ -10,7 +10,8 @@ import {
 
 const BASE_URL = "https://api.tcgdex.net/v2/en"
 const TIMEOUT_MS = 20_000
-const ATTEMPTS = 3
+const ATTEMPTS = 5
+const MAX_RETRY_AFTER_MS = 30_000
 const CONCURRENCY = 8
 /** Pokémon TCG Pocket is a digital game; its cards cannot be owned or priced. */
 const DIGITAL_SERIES = new Set(["tcgp"])
@@ -157,8 +158,9 @@ function createTcgdex(opts: Options = {}): CatalogProvider & PriceProvider {
   /** Resolves to null for a 404, which TCGdex returns for ids it does not know. */
   async function request<T>(path: string): Promise<T | null> {
     let last: ProviderError | undefined
+    let retryAfterMs = 0
     for (let attempt = 0; attempt < attempts; attempt++) {
-      if (attempt > 0) await sleep(retryDelayMs * 2 ** (attempt - 1))
+      if (attempt > 0) await sleep(Math.max(retryDelayMs * 2 ** (attempt - 1), retryAfterMs))
       let response: Response
       try {
         response = await doFetch(`${BASE_URL}${path}`, { signal: AbortSignal.timeout(timeoutMs) })
@@ -168,6 +170,9 @@ function createTcgdex(opts: Options = {}): CatalogProvider & PriceProvider {
         continue
       }
       if (response.status === 404) return null
+      // TCGdex answers 503 or 429 when it is busy; wait as long as it asks, within reason.
+      const retryAfter = Number(response.headers.get("retry-after"))
+      retryAfterMs = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter * 1000, MAX_RETRY_AFTER_MS) : 0
       last = new ProviderError(`tcgdex ${path} responded ${response.status}`, response.status)
       if (response.status !== 429 && response.status < 500) throw last
     }

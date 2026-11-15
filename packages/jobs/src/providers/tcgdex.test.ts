@@ -137,7 +137,7 @@ test("a card legal nowhere has no legalities", async () => {
   expect(charizard?.card.legalities).toEqual({})
 })
 
-test("a 500 is retried, and a third failure rejects with the status", async () => {
+test("a 500 is retried, and a fifth failure rejects with the status", async () => {
   let n = 0
   const flaky = api((path) => (path === "/sets" && ++n === 1 ? json({ error: "boom" }, 500) : undefined))
   expect(await createTcgdex({ fetch: flaky.fetch, retryDelayMs: 1 }).listSets()).toHaveLength(2)
@@ -146,7 +146,18 @@ test("a 500 is retried, and a third failure rejects with the status", async () =
   const err = await createTcgdex({ fetch: down.fetch, retryDelayMs: 1 }).listSets().catch((e: unknown) => e)
   expect(err).toBeInstanceOf(ProviderError)
   expect((err as ProviderError).status).toBe(500)
-  expect(down.paths).toHaveLength(3)
+  expect(down.paths).toHaveLength(5)
+})
+
+test("a 503 that says when to retry is retried after that long, not sooner", async () => {
+  let n = 0
+  const busy = api((path) =>
+    path === "/cards/base1-4" && ++n === 1 ? new Response("busy", { status: 503, headers: { "retry-after": "1" } }) : undefined,
+  )
+  const started = Date.now()
+  const priced = await createTcgdex({ fetch: busy.fetch, retryDelayMs: 1 }).getPrices(["base1-4"])
+  expect(priced).toHaveLength(1)
+  expect(Date.now() - started).toBeGreaterThanOrEqual(950)
 })
 
 test("attempts limits how many times a request is tried", async () => {
