@@ -1,0 +1,20 @@
+{
+  "name": "@poketrack/jobs",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "cli": "tsx src/cli.ts",
+    "build": "tsup"
+  },
+  "dependencies": {
+    "@poketrack/db": "workspace:*",
+    "drizzle-orm": "^0.45.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.0"
+  }
+}
