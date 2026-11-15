@@ -1,0 +1,6 @@
+services:
+  poketrack-jobs:
+    image: ghcr.io/papahuangson/poketrack-jobs:latest
+    container_name: poketrack-jobs
+    restart: unless-stopped
+    env_file: .env

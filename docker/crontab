@@ -1,0 +1,2 @@
+# 2:00 AM America/Chicago (TZ is set in the image). Output goes to the container log.
+0 2 * * * node /app/cli.cjs nightly >> /proc/1/fd/1 2>> /proc/1/fd/2
