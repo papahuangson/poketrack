@@ -44,7 +44,7 @@ type ApiCard = {
 
 type Page<T> = { data: T[]; page?: number; pageSize?: number; totalCount?: number }
 
-type Options = { apiKey?: string; fetch?: typeof fetch; retryDelayMs?: number }
+type Options = { apiKey?: string; fetch?: typeof fetch; retryDelayMs?: number; attempts?: number; timeoutMs?: number }
 
 const cents = (dollars: number | null | undefined): number | null =>
   typeof dollars === "number" && Number.isFinite(dollars) ? Math.round(dollars * 100) : null
@@ -104,6 +104,8 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 function createPokemonTcgIo(opts: Options = {}): CatalogProvider & PriceProvider {
   const doFetch = opts.fetch ?? fetch
   const retryDelayMs = opts.retryDelayMs ?? 1000
+  const attempts = opts.attempts ?? ATTEMPTS
+  const timeoutMs = opts.timeoutMs ?? TIMEOUT_MS
   const headers: Record<string, string> = opts.apiKey ? { "X-Api-Key": opts.apiKey } : {}
 
   async function request<T>(path: string, params: Record<string, string>): Promise<Page<T>> {
@@ -111,16 +113,16 @@ function createPokemonTcgIo(opts: Options = {}): CatalogProvider & PriceProvider
     for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value)
 
     let last: ProviderError | undefined
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    for (let attempt = 0; attempt < attempts; attempt++) {
       if (attempt > 0) await sleep(retryDelayMs * 2 ** (attempt - 1))
       let response: Response
       try {
-        response = await doFetch(url, { headers, signal: AbortSignal.timeout(TIMEOUT_MS) })
+        response = await doFetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) })
+        if (response.ok) return (await response.json()) as Page<T>
       } catch (cause) {
         last = new ProviderError(`pokemontcg.io ${path}: ${cause instanceof Error ? cause.message : String(cause)}`)
         continue
       }
-      if (response.ok) return (await response.json()) as Page<T>
       last = new ProviderError(`pokemontcg.io ${path} responded ${response.status}`, response.status)
       if (response.status !== 429 && response.status < 500) throw last
     }
@@ -147,7 +149,7 @@ function createPokemonTcgIo(opts: Options = {}): CatalogProvider & PriceProvider
       const priced: PricedCard[] = []
       for (let i = 0; i < cardIds.length; i += ID_BATCH) {
         const batch = cardIds.slice(i, i + ID_BATCH)
-        const cards = await all<ApiCard>("/cards", { q: `id:(${batch.join(" OR ")})` })
+        const cards = await all<ApiCard>("/cards", { q: batch.map((id) => `id:"${id}"`).join(" OR ") })
         priced.push(...cards.map((c) => ({ card: mapCard(c), prices: mapPrices(c) })))
       }
       return priced

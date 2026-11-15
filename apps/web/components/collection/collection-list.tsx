@@ -16,6 +16,15 @@ function Price({ cents, strong }: { cents: number | null; strong?: boolean }) {
   )
 }
 
+const SHORT_DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
+
+function note(row: CollectionRow): string | null {
+  if (row.marketCents === null) {
+    return row.cardVariants.length > 0 && !row.cardVariants.includes(row.variant) ? "Edit to pick a variant" : null
+  }
+  return row.priceStale && row.priceDate ? `Price from ${SHORT_DATE.format(new Date(row.priceDate))}` : null
+}
+
 function CollectionList({ rows, filtered, renderMenu }: Props) {
   if (rows.length === 0) {
     return (
@@ -50,6 +59,7 @@ function CollectionList({ rows, filtered, renderMenu }: Props) {
             <p className="truncate text-sm text-ink-soft">
               {row.setName}, {row.number}/{row.printedTotal}
             </p>
+            {note(row) && <p className="truncate text-sm font-medium text-down">{note(row)}</p>}
           </div>
           <div className="col-start-2 flex gap-3 text-sm sm:contents">
             <span>{variantLabel(row.variant)}</span>

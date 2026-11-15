@@ -1,7 +1,7 @@
 import { jobRuns, type Db } from "@poketrack/db"
 import { createTestDb } from "@poketrack/db/testing"
 import { expect, test } from "vitest"
-import { formatDuration, recentRuns, runnerShaMismatch, type JobRun } from "./job-runs"
+import { formatDuration, recentRuns, nasBehind, type JobRun } from "./job-runs"
 
 function run(over: Partial<JobRun>): JobRun {
   return {
@@ -18,33 +18,28 @@ function run(over: Partial<JobRun>): JobRun {
   }
 }
 
-test("different shas on the latest ok run of each runner are a mismatch", () => {
-  const runs = [run({ runDate: "2026-11-14", runner: "vercel", gitSha: "bbb" }), run({ runDate: "2026-11-13", runner: "nas", gitSha: "aaa" })]
-  expect(runnerShaMismatch(runs)).toEqual({ nas: "aaa", vercel: "bbb" })
+test("a NAS that last ran a different version than the site is behind", () => {
+  expect(nasBehind([run({ gitSha: "aaa" })], "bbb")).toEqual({ nas: "aaa", site: "bbb" })
 })
 
-test("the same sha is not a mismatch", () => {
-  const runs = [run({ runner: "vercel", gitSha: "aaa" }), run({ runDate: "2026-11-13", runner: "nas", gitSha: "aaa" })]
-  expect(runnerShaMismatch(runs)).toBeNull()
+test("a NAS on the site's version is not behind", () => {
+  expect(nasBehind([run({ gitSha: "aaa" })], "aaa")).toBeNull()
 })
 
-test("one runner alone is not a mismatch", () => {
-  expect(runnerShaMismatch([run({}), run({ runDate: "2026-11-13" })])).toBeNull()
-  expect(runnerShaMismatch([])).toBeNull()
-})
-
-test("a failed run is skipped in favor of that runner's latest ok run", () => {
+test("Vercel runs and failed NAS runs are ignored in favor of the latest ok NAS run", () => {
   const runs = [
-    run({ runDate: "2026-11-14", runner: "vercel", gitSha: "aaa", status: "failed" }),
-    run({ runDate: "2026-11-13", runner: "nas", gitSha: "aaa" }),
-    run({ runDate: "2026-11-12", runner: "vercel", gitSha: "old" }),
+    run({ runDate: "2026-11-14", runner: "vercel", gitSha: "bbb" }),
+    run({ runDate: "2026-11-13", runner: "nas", gitSha: "zzz", status: "failed" }),
+    run({ runDate: "2026-11-12", runner: "nas", gitSha: "bbb" }),
   ]
-  expect(runnerShaMismatch(runs)).toEqual({ nas: "aaa", vercel: "old" })
+  expect(nasBehind(runs, "bbb")).toBeNull()
 })
 
-test("an unknown sha is never reported as a mismatch", () => {
-  const runs = [run({ runner: "vercel", gitSha: "unknown" }), run({ runDate: "2026-11-13", runner: "nas", gitSha: "aaa" })]
-  expect(runnerShaMismatch(runs)).toBeNull()
+test("with no NAS run or no known version there is nothing to compare", () => {
+  expect(nasBehind([], "bbb")).toBeNull()
+  expect(nasBehind([run({ runner: "vercel", gitSha: "aaa" })], "bbb")).toBeNull()
+  expect(nasBehind([run({ gitSha: "unknown" })], "bbb")).toBeNull()
+  expect(nasBehind([run({ gitSha: "aaa" })], undefined)).toBeNull()
 })
 
 test("recentRuns returns the newest runs first, up to the limit", async () => {

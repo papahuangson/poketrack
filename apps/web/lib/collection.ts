@@ -46,11 +46,19 @@ type CollectionRow = {
   cardVariants: string[]
   marketCents: number | null
   rowTotalCents: number | null
+  priceDate: string | null
+  priceStale: boolean
 }
 
 type Filters = { setId?: string; variant?: string; condition?: Condition; sort?: Sort }
 
 type LoadedRow = CollectionRow & { previousCents: number | null; releaseDate: string }
+
+const STALE_AFTER_DAYS = 2
+const DAY_MS = 24 * 60 * 60 * 1000
+
+const isStale = (priceDate: string | null, newestDate: string | null) =>
+  priceDate !== null && newestDate !== null && Date.parse(newestDate) - Date.parse(priceDate) > STALE_AFTER_DAYS * DAY_MS
 
 async function rows<T>(db: Db, query: SQL): Promise<T[]> {
   const result = (await db.execute(query)) as unknown as { rows: T[] }
@@ -229,7 +237,7 @@ async function loadRows(db: Db, f: Omit<Filters, "sort">): Promise<LoadedRow[]> 
   if (f.variant) conditions.push(sql`ci.variant = ${f.variant}`)
   if (f.condition) conditions.push(sql`ci.condition = ${f.condition}`)
 
-  const loaded = await rows<Omit<LoadedRow, "rowTotalCents">>(
+  const loaded = await rows<Omit<LoadedRow, "rowTotalCents" | "priceStale"> & { newestDate: string | null }>(
     db,
     sql`
       select ci.id, ci.card_id as "cardId", c.name, c.set_id as "setId", s.name as "setName", c.number,
@@ -237,6 +245,9 @@ async function loadRows(db: Db, f: Omit<Filters, "sort">): Promise<LoadedRow[]> 
              ci.quantity, round(ci.paid_usd * 100)::int as "paidCents", ci.acquired_on::text as "acquiredOn",
              ci.binder, c.variants as "cardVariants",
              ${snapshotCents(0)} as "marketCents", ${snapshotCents(1)} as "previousCents",
+             (select max(p.date)::text from price_snapshots p
+               where p.card_id = ci.card_id and p.variant = ci.variant and p.market_usd is not null) as "priceDate",
+             (select max(p.date)::text from price_snapshots p where p.market_usd is not null) as "newestDate",
              s.release_date::text as "releaseDate"
       from collection_items ci
       join cards c on c.id = ci.card_id
@@ -244,9 +255,10 @@ async function loadRows(db: Db, f: Omit<Filters, "sort">): Promise<LoadedRow[]> 
       where ${sql.join(conditions, sql` and `)}
     `,
   )
-  return loaded.map((row) => ({
+  return loaded.map(({ newestDate, ...row }) => ({
     ...row,
     rowTotalCents: row.marketCents === null ? null : row.marketCents * row.quantity,
+    priceStale: isStale(row.priceDate, newestDate),
   }))
 }
 
@@ -277,7 +289,7 @@ async function collectionTotals(db: Db): Promise<{ totalCents: number; changeCen
       continue
     }
     totalCents += row.marketCents * row.quantity
-    if (row.previousCents !== null) {
+    if (row.previousCents !== null && !row.priceStale) {
       changeCents = (changeCents ?? 0) + (row.marketCents - row.previousCents) * row.quantity
     }
   }

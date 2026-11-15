@@ -23,6 +23,8 @@ function row(over: Partial<CollectionRow> = {}): CollectionRow {
     cardVariants: ["normal", "reverseHolofoil"],
     marketCents: 410,
     rowTotalCents: 820,
+    priceDate: "2026-11-14",
+    priceStale: false,
     ...over,
   }
 }
@@ -58,4 +60,19 @@ test("an empty filtered list says the filters matched nothing", () => {
 test("each row renders the menu it is given", () => {
   render(<CollectionList rows={[row()]} filtered={false} renderMenu={(r) => <button>Actions for {r.name}</button>} />)
   expect(screen.getByRole("button", { name: "Actions for Pikachu" })).toBeInTheDocument()
+})
+
+test("an unpriced row whose variant the card no longer lists asks for a variant", () => {
+  render(<CollectionList rows={[row({ variant: "normal", cardVariants: ["holofoil"], marketCents: null, rowTotalCents: null, priceDate: null })]} filtered={false} />)
+  expect(screen.getByText("Edit to pick a variant")).toBeInTheDocument()
+})
+
+test("an unpriced row with a listed variant shows no variant hint", () => {
+  render(<CollectionList rows={[row({ marketCents: null, rowTotalCents: null, priceDate: null })]} filtered={false} />)
+  expect(screen.queryByText("Edit to pick a variant")).toBeNull()
+})
+
+test("a stale price says which day it is from", () => {
+  render(<CollectionList rows={[row({ priceDate: "2026-11-02", priceStale: true })]} filtered={false} />)
+  expect(screen.getByText("Price from Nov 2")).toBeInTheDocument()
 })

@@ -1,7 +1,10 @@
 import { drizzle } from "drizzle-orm/node-postgres"
 import { migrate } from "drizzle-orm/node-postgres/migrator"
 import pg from "pg"
+import { loadDotEnv } from "../src/env"
 import { migrationsFolder } from "../src/migrations-path"
+
+loadDotEnv()
 
 const url = process.env.DATABASE_URL
 if (!url) {

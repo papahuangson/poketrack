@@ -295,3 +295,31 @@ test("the default variant is the last one used when the card offers it", async (
   expect(await defaultVariant(db, ["holofoil"])).toBe("holofoil")
   expect(await defaultVariant(db, [])).toBe("normal")
 })
+
+test("a row whose latest price is days older than the newest is stale and left out of the change", async () => {
+  await addItem(db, { cardId: "sv3pt5-199", variant: "holofoil", condition: "NM", quantity: 1 })
+  await addItem(db, { cardId: "base1-58", variant: "normal", condition: "NM", quantity: 1 })
+  await db.insert(priceSnapshots).values([
+    snapshot("sv3pt5-199", "holofoil", "2026-11-13", 90),
+    snapshot("sv3pt5-199", "holofoil", "2026-11-14", 98.4),
+    snapshot("base1-58", "normal", "2026-11-01", 3),
+    snapshot("base1-58", "normal", "2026-11-02", 4.1),
+  ])
+  expect(await collectionTotals(db)).toEqual({ totalCents: 10250, changeCents: 840, unpricedCount: 0 })
+  const rows = await listCollection(db, {})
+  expect(rows.find((r) => r.cardId === "base1-58")).toMatchObject({ priceDate: "2026-11-02", priceStale: true })
+  expect(rows.find((r) => r.cardId === "sv3pt5-199")).toMatchObject({ priceDate: "2026-11-14", priceStale: false })
+})
+
+test("a price from the day before the newest is not stale", async () => {
+  await addItem(db, { cardId: "sv3pt5-199", variant: "holofoil", condition: "NM", quantity: 1 })
+  await addItem(db, { cardId: "base1-58", variant: "normal", condition: "NM", quantity: 1 })
+  await db.insert(priceSnapshots).values([
+    snapshot("sv3pt5-199", "holofoil", "2026-11-15", 98.4),
+    snapshot("base1-58", "normal", "2026-11-13", 3),
+    snapshot("base1-58", "normal", "2026-11-14", 4.1),
+  ])
+  expect(await collectionTotals(db)).toMatchObject({ changeCents: 110 })
+  const rows = await listCollection(db, {})
+  expect(rows.every((r) => !r.priceStale)).toBe(true)
+})

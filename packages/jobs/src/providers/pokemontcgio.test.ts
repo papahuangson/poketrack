@@ -105,7 +105,7 @@ test("getPrices asks for ids in batches of 50", async () => {
   const { fetch, calls } = stub(() => json({ data: [], page: 1, pageSize: 250, count: 0, totalCount: 0 }))
   await createPokemonTcgIo({ fetch }).getPrices(ids)
   expect(calls).toHaveLength(3)
-  expect(calls[0]?.url.searchParams.get("q")).toMatch(/^id:\(x-1 OR x-2 OR /)
+  expect(calls[0]?.url.searchParams.get("q")).toMatch(/^id:"x-1" OR id:"x-2" OR /)
   expect(calls[2]?.url.searchParams.get("q")?.split(" OR ")).toHaveLength(20)
 })
 
@@ -149,4 +149,18 @@ test("the api key is sent when set", async () => {
   const { fetch, calls } = stub(() => json(setsFixture))
   await createPokemonTcgIo({ fetch, apiKey: "k123" }).listSets()
   expect(new Headers(calls[0]?.init?.headers).get("X-Api-Key")).toBe("k123")
+})
+
+test("a 200 whose body cannot be read is retried", async () => {
+  let n = 0
+  const { fetch, calls } = stub(() => (++n === 1 ? new Response("<html>gateway</html>", { status: 200 }) : json(setsFixture)))
+  const sets = await createPokemonTcgIo({ fetch, retryDelayMs: 1 }).listSets()
+  expect(sets).toHaveLength(2)
+  expect(calls).toHaveLength(2)
+})
+
+test("attempts limits how many times a request is tried", async () => {
+  const { fetch, calls } = stub(() => json({ error: "boom" }, 500))
+  await expect(createPokemonTcgIo({ fetch, retryDelayMs: 1, attempts: 1 }).listSets()).rejects.toBeInstanceOf(ProviderError)
+  expect(calls).toHaveLength(1)
 })

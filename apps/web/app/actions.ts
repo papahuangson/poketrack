@@ -31,7 +31,7 @@ async function priceIfMissing(cardId: string): Promise<void> {
     .limit(1)
   if (existing) return
   try {
-    await snapshotCard(db, createPokemonTcgIo({ apiKey: process.env.POKEMONTCG_API_KEY }), cardId, today)
+    await snapshotCard(db, createPokemonTcgIo({ apiKey: process.env.POKEMONTCG_API_KEY, attempts: 1, timeoutMs: 6000 }), cardId, today)
   } catch (error) {
     console.error(`Could not fetch a price for ${cardId}`, error)
   }

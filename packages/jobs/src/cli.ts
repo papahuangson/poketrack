@@ -1,4 +1,4 @@
-import { createDb, RUNNERS, type Runner } from "@poketrack/db"
+import { createDb, loadDotEnv, RUNNERS, type Runner } from "@poketrack/db"
 import { syncCatalog } from "./catalog-sync"
 import { runNightly } from "./nightly"
 import { createPokemonTcgIo } from "./providers/pokemontcgio"
@@ -19,7 +19,11 @@ async function main(): Promise<number> {
     return 2
   }
 
+  loadDotEnv()
   const db = createDb(requireEnv("DATABASE_URL"))
+  if (!process.env.POKEMONTCG_API_KEY) {
+    console.warn("POKEMONTCG_API_KEY is not set. Requests without a key are heavily rate limited and a backfill will likely fail.")
+  }
   const provider = createPokemonTcgIo({ apiKey: process.env.POKEMONTCG_API_KEY })
 
   if (command === "backfill") {

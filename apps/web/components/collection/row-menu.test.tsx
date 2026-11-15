@@ -32,6 +32,8 @@ const row: CollectionRow = {
   cardVariants: ["normal", "reverseHolofoil"],
   marketCents: 410,
   rowTotalCents: 820,
+  priceDate: null,
+  priceStale: false,
 }
 
 beforeEach(() => {

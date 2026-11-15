@@ -1,5 +1,5 @@
 import { getDb } from "@/lib/db"
-import { formatDuration, recentRuns, runnerShaMismatch } from "@/lib/job-runs"
+import { formatDuration, recentRuns, nasBehind } from "@/lib/job-runs"
 
 export const dynamic = "force-dynamic"
 
@@ -8,7 +8,7 @@ const STATUS_NAMES = { ok: "OK", failed: "Failed", running: "Running" } as const
 
 export default async function SettingsPage() {
   const runs = await recentRuns(getDb())
-  const mismatch = runnerShaMismatch(runs)
+  const behind = nasBehind(runs, process.env.VERCEL_GIT_COMMIT_SHA)
 
   return (
     <div className="space-y-6">
@@ -17,10 +17,10 @@ export default async function SettingsPage() {
         <h2 id="runs-heading" className="font-display text-xl font-semibold">
           Nightly price updates
         </h2>
-        {mismatch && (
+        {behind && (
           <p role="status" className="rounded-md border border-ink bg-energy px-3 py-2 text-sm">
-            The NAS and Vercel are running different versions (nas {mismatch.nas.slice(0, 7)}, vercel{" "}
-            {mismatch.vercel.slice(0, 7)}). Pull the latest image on the NAS.
+            The NAS last ran version {behind.nas.slice(0, 7)} and this site is on {behind.site.slice(0, 7)}. If you
+            have not already, pull the latest image on the NAS.
           </p>
         )}
         {runs.length === 0 ? (

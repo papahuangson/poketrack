@@ -4,6 +4,7 @@ import { beforeEach, expect, test, vi } from "vitest"
 
 const snapshotCard = vi.fn()
 const revalidatePath = vi.fn()
+const providerOptions = vi.fn()
 let db: Db
 
 vi.mock("next/cache", () => ({ revalidatePath: (...args: unknown[]) => revalidatePath(...args) }))
@@ -11,7 +12,10 @@ vi.mock("@/lib/db", () => ({ getDb: () => db }))
 vi.mock("@poketrack/jobs", async (original) => ({
   ...(await original<typeof import("@poketrack/jobs")>()),
   snapshotCard: (...args: unknown[]) => snapshotCard(...args),
-  createPokemonTcgIo: () => ({ provider: true }),
+  createPokemonTcgIo: (opts: unknown) => {
+    providerOptions(opts)
+    return { provider: true }
+  },
 }))
 
 const { upsertCards } = await import("@poketrack/jobs")
@@ -105,4 +109,9 @@ test("the default variant comes from the last add", async () => {
   expect(await defaultVariantAction(["normal", "holofoil"])).toBe("normal")
   await addCardAction(add)
   expect(await defaultVariantAction(["normal", "holofoil"])).toBe("holofoil")
+})
+
+test("the price fetch on add tries once with a short timeout", async () => {
+  await addCardAction(add)
+  expect(providerOptions).toHaveBeenLastCalledWith(expect.objectContaining({ attempts: 1, timeoutMs: 6000 }))
 })

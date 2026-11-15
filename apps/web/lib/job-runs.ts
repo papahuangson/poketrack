@@ -7,15 +7,12 @@ async function recentRuns(db: Db, limit = 14): Promise<JobRun[]> {
   return db.select().from(jobRuns).orderBy(desc(jobRuns.runDate), desc(jobRuns.id)).limit(limit)
 }
 
-function runnerShaMismatch(runs: JobRun[]): { nas: string; vercel: string } | null {
-  const latestOk = (runner: JobRun["runner"]) =>
-    runs
-      .filter((run) => run.runner === runner && run.status === "ok")
-      .sort((a, b) => b.runDate.localeCompare(a.runDate))[0]?.gitSha
-  const nas = latestOk("nas")
-  const vercel = latestOk("vercel")
-  if (!nas || !vercel || nas === "unknown" || vercel === "unknown" || nas === vercel) return null
-  return { nas, vercel }
+function nasBehind(runs: JobRun[], siteSha: string | undefined): { nas: string; site: string } | null {
+  const nas = runs
+    .filter((run) => run.runner === "nas" && run.status === "ok")
+    .sort((a, b) => b.runDate.localeCompare(a.runDate))[0]?.gitSha
+  if (!nas || !siteSha || nas === "unknown" || nas === siteSha) return null
+  return { nas, site: siteSha }
 }
 
 function formatDuration(run: JobRun): string {
@@ -24,5 +21,5 @@ function formatDuration(run: JobRun): string {
   return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`
 }
 
-export { formatDuration, recentRuns, runnerShaMismatch }
+export { formatDuration, recentRuns, nasBehind }
 export type { JobRun }

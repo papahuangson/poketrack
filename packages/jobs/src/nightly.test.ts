@@ -70,3 +70,21 @@ test("a price failure keeps the catalog rows from the sync step", async () => {
   expect(result).toMatchObject({ claimed: true, status: "failed" })
   expect(await db.select().from(cards)).toHaveLength(1)
 })
+
+test("a catalog failure still refreshes prices for owned cards, and the run is failed", async () => {
+  await runNightly(db, provider, nas)
+  await db.insert(collectionItems).values({ cardId: "a-1", variant: "normal" })
+  provider.fail.listSets = new ProviderError("pokemontcg.io /sets responded 503", 503)
+  const result = await runNightly(db, provider, { ...nas, now: new Date("2026-11-16T08:00:00Z") })
+  expect(result).toEqual({ claimed: true, status: "failed", error: "pokemontcg.io /sets responded 503" })
+  expect(await db.select().from(priceSnapshots)).toMatchObject([{ cardId: "a-1", date: "2026-11-16" }])
+})
+
+test("when the catalog and prices both fail, both errors are recorded", async () => {
+  await runNightly(db, provider, nas)
+  await db.insert(collectionItems).values({ cardId: "a-1", variant: "normal" })
+  provider.fail.listSets = new Error("sets down")
+  provider.fail.getPrices = new Error("prices down")
+  const result = await runNightly(db, provider, { ...nas, now: new Date("2026-11-16T08:00:00Z") })
+  expect(result).toEqual({ claimed: true, status: "failed", error: "sets down; prices down" })
+})
