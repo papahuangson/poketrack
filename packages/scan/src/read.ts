@@ -58,7 +58,7 @@ const TOOL: Tool = {
 }
 
 const PROMPT = `This photo shows one page of a 9-pocket binder of English Pokémon cards (3 rows of 3).
-For each pocket, numbered 1-9 row by row from the top left, call report_slots once with all 9 pockets.
+For each pocket, numbered 1-9 row by row from the top left, call the report_slots tool once with all 9 pockets. Always answer by calling report_slots.
 - Report the name, collector number and set code exactly as printed. Do not guess: if you cannot read something, use null and lower the confidence.
 - Lower the confidence when glare, a sleeve seen at an angle, or anything else hides part of the name or number.
 - Mark a pocket with no card as empty: true.`
@@ -116,6 +116,21 @@ function normalizeSlots(raw: unknown): PageSlot[] {
   return Array.from({ length: SLOT_COUNT }, (_, i) => bySlot.get(i + 1) ?? unreadable(i + 1))
 }
 
+// Fallback for a model that answers in text: take the first {...} block (fenced or not) that parses.
+function jsonFromText(text: string): unknown {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/)
+  const candidates = [fenced?.[1], text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)]
+  for (const candidate of candidates) {
+    if (!candidate || !candidate.trim().startsWith("{")) continue
+    try {
+      return JSON.parse(candidate)
+    } catch {
+      // try the next candidate
+    }
+  }
+  return undefined
+}
+
 const retryable = (error: unknown) =>
   error instanceof APIConnectionError || (error instanceof APIError && typeof error.status === "number" && error.status >= 500)
 
@@ -132,7 +147,8 @@ async function readPage(client: ModelClient, opts: ReadOptions): Promise<PageSlo
     model: opts.model,
     max_tokens: 4096,
     tools: [TOOL],
-    tool_choice: { type: "tool", name: TOOL.name },
+    // Some models reject forced tool use, so the tool is offered and the prompt asks for it.
+    tool_choice: { type: "auto" },
     messages: [
       {
         role: "user",
@@ -157,8 +173,10 @@ async function readPage(client: ModelClient, opts: ReadOptions): Promise<PageSlo
   }
 
   const call = message?.content.find((b) => b.type === "tool_use" && b.name === TOOL.name)
-  if (!call || call.type !== "tool_use") throw new ReadError("The model did not report any pockets.")
-  return normalizeSlots(call.input)
+  if (call && call.type === "tool_use") return normalizeSlots(call.input)
+  const json = jsonFromText(message?.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n") ?? "")
+  if (json === undefined) throw new ReadError("The model did not report any pockets.")
+  return normalizeSlots(json)
 }
 
 export { normalizeSlots, PROMPT_VERSION, readPage, ReadError }

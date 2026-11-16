@@ -93,12 +93,13 @@ test("malformed tool output throws ReadError", async () => {
   await expect(readPage(client(fixture("read-malformed")), opts)).rejects.toBeInstanceOf(ReadError)
 })
 
-test("request uses the image URL and forces the tool", async () => {
+test("request uses the image URL and offers the tool without forcing it (not every model allows forcing)", async () => {
   const c = client(fixture("read-full"))
   await readPage(c, opts)
   const params = c.create.mock.calls[0]?.[0] as MessageCreateParamsNonStreaming
   expect(params.model).toBe("claude-test")
-  expect(params.tool_choice).toEqual({ type: "tool", name: "report_slots" })
+  expect(params.tool_choice).toEqual({ type: "auto" })
+  expect(params.tools?.map((t) => ("name" in t ? t.name : null))).toEqual(["report_slots"])
   const content = params.messages[0]?.content
   expect(Array.isArray(content) && content.some((b) => b.type === "image" && b.source.type === "url" && b.source.url === opts.imageUrl)).toBe(true)
 })
@@ -110,4 +111,16 @@ test("an inline photo is sent as base64 instead of a link", async () => {
   const content = params.messages[0]?.content
   const image = Array.isArray(content) ? content.find((b) => b.type === "image") : undefined
   expect(image).toMatchObject({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: "QUJD" } })
+})
+
+test("a JSON answer in text is accepted when the model doesn't call the tool", async () => {
+  const text = { content: [{ type: "text", text: "Here you go:\n```json\n" + JSON.stringify(fixture("read-full")) + "\n```" }] } as unknown as Message
+  const slots = await readPage({ create: vi.fn().mockResolvedValue(text) }, opts)
+  expect(slots).toHaveLength(9)
+  expect(slots[0]?.name).toBe("Charizard ex")
+})
+
+test("a text answer with no JSON fails cleanly", async () => {
+  const text = { content: [{ type: "text", text: "I can't see the cards." }] } as unknown as Message
+  await expect(readPage({ create: vi.fn().mockResolvedValue(text) }, opts)).rejects.toBeInstanceOf(ReadError)
 })
