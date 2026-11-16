@@ -26,11 +26,16 @@ async function run(work: () => Promise<unknown>): Promise<ActionResult> {
   return { ok: true }
 }
 
-async function movePocketAction(resultId: number, to: { variant: string; condition: Condition }): Promise<ActionResult> {
-  return run(async () => {
+type MoveResult = { ok: true; lotId: number } | Extract<ActionResult, { ok: false }>
+
+// Returns the lot the pocket's copy landed in, so the form can save paid price and date onto that lot.
+async function movePocketAction(resultId: number, to: { variant: string; condition: Condition }): Promise<MoveResult> {
+  let lotId = 0
+  const result = await run(async () => {
     checkId("pocket", resultId)
-    await movePocketCopy(getDb(), resultId, { variant: String(to?.variant ?? ""), condition: to?.condition })
+    lotId = (await movePocketCopy(getDb(), resultId, { variant: String(to?.variant ?? ""), condition: to?.condition })).lotId
   })
+  return result.ok ? { ok: true, lotId } : result
 }
 
 async function removePocketAction(resultId: number): Promise<ActionResult> {

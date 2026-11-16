@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { BinderPicker } from "@/components/binder/binder-picker"
+import { CardPanel } from "@/components/binder/card-panel"
 import { PageGrid } from "@/components/binder/page-grid"
 import { Pager } from "@/components/binder/pager"
 import { SearchBox } from "@/components/binder/search-box"
@@ -26,7 +27,7 @@ const hashLot = () => {
   return match ? Number(match[1]) : null
 }
 
-function BinderScreen({ binders, page, unplaced, highlightSlot, search }: Props) {
+function BinderScreen({ binders, page, unplaced, highlightSlot, detail, search }: Props) {
   const router = useRouter()
   const [highlightLot, setHighlightLot] = useState<number | null>(null)
 
@@ -34,6 +35,18 @@ function BinderScreen({ binders, page, unplaced, highlightSlot, search }: Props)
   useEffect(() => {
     setHighlightLot(hashLot())
   }, [page.binder, page.page])
+
+  // When the panel closes (button, Escape, backdrop or the back button), focus returns to the pocket that opened it.
+  const openKey = detail ? (detail.resultId !== null ? `r${detail.resultId}` : `l${detail.lotId}`) : null
+  const lastOpen = useRef<string | null>(null)
+  useEffect(() => {
+    if (openKey) {
+      lastOpen.current = openKey
+    } else if (lastOpen.current) {
+      document.querySelector<HTMLElement>(`[data-pocket="${lastOpen.current}"]`)?.focus()
+      lastOpen.current = null
+    }
+  }, [openKey])
 
   function open(ref: CardRef) {
     router.push(binderHref({ binder: page.binder, page: page.page, card: ref }), { scroll: false })
@@ -69,6 +82,7 @@ function BinderScreen({ binders, page, unplaced, highlightSlot, search }: Props)
         )}
       </div>
       <UnplacedStrip lots={unplaced} highlightLotId={highlightLot} onOpen={open} />
+      {detail && openKey ? <CardPanel key={openKey} detail={detail} closeHref={binderHref({ binder: page.binder, page: page.page })} /> : null}
     </div>
   )
 }

@@ -23,7 +23,9 @@ const quantities = async () => (await db.select().from(collectionItems).orderBy(
 
 test("a pocket move saves and refreshes the binder and the collection", async () => {
   const { resultIds } = await commitPage(db, { pockets: [{ card: "base1-58" }, { card: "base1-58" }] })
-  expect(await movePocketAction(resultIds[0]!, { variant: "normal", condition: "LP" })).toEqual({ ok: true })
+  const moved = await movePocketAction(resultIds[0]!, { variant: "normal", condition: "LP" })
+  expect(moved).toEqual({ ok: true, lotId: expect.any(Number) })
+  expect((await db.select().from(scanResults).where(eq(scanResults.id, resultIds[0]!)))[0]?.collectionItemId).toBe(moved.ok ? moved.lotId : null)
   expect(await quantities()).toEqual([
     ["NM", 1],
     ["LP", 1],
