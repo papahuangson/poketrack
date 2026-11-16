@@ -48,9 +48,16 @@ Use Neon's direct connection string for `pnpm db:migrate` and the pooled one for
 
 1. Import the GitHub repo and set the **root directory** to `apps/web`.
 2. Add environment variables: `DATABASE_URL` (Neon `main`) and `CRON_SECRET` (any long random string).
-3. Turn on **Deployment Protection**. The app has no login of its own, so this is the only thing keeping it private.
-4. **Check that it worked.** Open your production address (`<project>.vercel.app`) in a private browser window. You should be asked to log in to Vercel. If the collection loads instead, the production address is not covered by your plan's protection level, and anyone with the link can view and change your collection. Do not leave it that way: raise the protection level, or hold off on real data until the app has a passcode.
-5. After the first deploy, run `vercel crons run /api/cron/nightly` and confirm a row appears on the Settings page (or that the NAS already ran that night).
+3. Add the Phase 2 variables:
+   - `APP_PASSCODE`: the passcode you'll type to open the app.
+   - `SESSION_SECRET`: any long random string. It signs the sign-in cookie. Changing it, or changing the passcode, signs every device out.
+   - `ANTHROPIC_API_KEY`: reads scan photos.
+   - `ANTHROPIC_MODEL` (optional): the model for scans. Defaults to `claude-sonnet-5-5`.
+   Set them for both Production and Preview. If the passcode or secret is missing, the app shows only the login page.
+4. In the project's **Storage** tab, create a **Blob** store and connect it to the project. This sets `BLOB_READ_WRITE_TOKEN`, which scan photo uploads need.
+5. Run `pnpm db:migrate` against the Neon `main` branch so the scan tables exist, then deploy.
+6. Open the production address in a private window. You should land on the passcode page, and the passcode should open the collection. Once that works, turn **off** Deployment Protection for Production so your phone can reach the app without a Vercel sign-in. Preview deployments can keep it on.
+7. After the first deploy, run `vercel crons run /api/cron/nightly` and confirm a row appears on the Settings page (or that the NAS already ran that night).
 
 `apps/web/vercel.json` schedules `/api/cron/nightly` for 10:00 UTC, which is 4:00 AM Central in winter and 5:00 AM in summer. It only does the work when the NAS has not already finished that night's run.
 
@@ -85,3 +92,23 @@ Each run starts by inserting a row into `job_runs` for that calendar date (Centr
 ## Done check for Phase 1
 
 Add 20 cards. The next morning, Settings should show an `ok` run from `NAS`, and the collection total should show a change figure.
+
+## Scanning binder pages (Phase 2)
+
+On your phone, open the app, sign in with the passcode, and tap **Scan a page**. Pick the binder, check the page number, and take a photo of the whole 9-pocket page. After about 10–30 seconds the review grid appears:
+
+- Matches the app is sure of are already ticked. Pockets marked **Check** need you to pick the card.
+- Arrow keys move between pockets, Enter confirms, and X rejects. On a phone, use the buttons.
+- **Typed in earlier, use that copy** moves a card you entered by hand into this binder instead of counting it twice.
+- Scanning a page you've already added replaces what that page added before. The grid shows what will change before you tap **Replace page**.
+
+## Done check for Phase 2
+
+Scan 3 real binder pages, including one with holo cards in sleeves. Each page should need **2 or fewer corrections**: a pocket where you picked a different card, rejected a card that was there, or had to search for it.
+
+Write the line from the **Scans** page here when you've done it:
+
+> First guess right: _ of _ pockets (_%)
+
+If a page needs more than 2 corrections, see "Later" in `docs/superpowers/specs/2026-11-15-poketrack-phase-2-design.md` (a second, close-up read of unclear pockets).
+
