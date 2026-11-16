@@ -1,10 +1,13 @@
 import { sql } from "drizzle-orm"
 import {
+  boolean,
+  check,
   date,
   index,
   integer,
   jsonb,
   numeric,
+  real,
   pgTable,
   primaryKey,
   serial,
@@ -12,7 +15,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core"
-import type { Condition, Runner, RunStatus } from "./constants"
+import type { Candidate, Condition, Decision, Runner, RunStatus, ScanStatus, SlotBox, SlotCues } from "./constants"
 
 const usd = (name: string) => numeric(name, { precision: 10, scale: 2, mode: "number" })
 
@@ -117,4 +120,58 @@ const jobRuns = pgTable(
   (t) => [uniqueIndex("job_runs_job_date").on(t.job, t.runDate)],
 )
 
-export { cards, collectionItems, jobRuns, priceSnapshots, sets, watchlist }
+const scans = pgTable(
+  "scans",
+  {
+    id: serial("id").primaryKey(),
+    imageUrl: text("image_url").notNull(),
+    imageWidth: integer("image_width").notNull(),
+    imageHeight: integer("image_height").notNull(),
+    binder: text("binder").notNull(),
+    page: integer("page").notNull(),
+    status: text("status").$type<ScanStatus>().notNull().default("reading"),
+    error: text("error"),
+    model: text("model"),
+    promptVersion: text("prompt_version"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    committedAt: timestamp("committed_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("scans_one_committed_page")
+      .on(sql`lower(trim(${t.binder}))`, t.page)
+      .where(sql`${t.status} = 'committed'`),
+  ],
+)
+
+const scanResults = pgTable(
+  "scan_results",
+  {
+    id: serial("id").primaryKey(),
+    scanId: integer("scan_id")
+      .notNull()
+      .references(() => scans.id, { onDelete: "cascade" }),
+    slot: integer("slot").notNull(),
+    empty: boolean("empty").notNull().default(false),
+    readName: text("read_name"),
+    readNumber: text("read_number"),
+    readPrintedTotal: integer("read_printed_total"),
+    readSetCode: text("read_set_code"),
+    readCues: jsonb("read_cues").$type<SlotCues>(),
+    confidence: real("confidence").notNull().default(0),
+    box: jsonb("box").$type<SlotBox>(),
+    candidates: jsonb("candidates").$type<Candidate[]>().notNull().default([]),
+    chosenCardId: text("chosen_card_id").references(() => cards.id),
+    variant: text("variant"),
+    condition: text("condition").$type<Condition>().notNull().default("NM"),
+    decision: text("decision").$type<Decision>().notNull().default("pending"),
+    claimManual: boolean("claim_manual").notNull().default(false),
+    collectionItemId: integer("collection_item_id").references(() => collectionItems.id, { onDelete: "set null" }),
+    claimedFromItemId: integer("claimed_from_item_id").references(() => collectionItems.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    uniqueIndex("scan_results_scan_slot").on(t.scanId, t.slot),
+    check("scan_results_slot_range", sql`${t.slot} between 1 and 9`),
+  ],
+)
+
+export { cards, collectionItems, jobRuns, priceSnapshots, scanResults, scans, sets, watchlist }
