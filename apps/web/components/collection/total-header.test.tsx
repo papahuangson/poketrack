@@ -38,3 +38,8 @@ test("says that condition is ignored", () => {
   render(<TotalHeader totalCents={100} changeCents={null} unpricedCount={0} />)
   expect(screen.getByText("Values use market price and ignore condition.")).toBeInTheDocument()
 })
+
+test("links to scanning a page", () => {
+  render(<TotalHeader totalCents={100} changeCents={null} unpricedCount={0} />)
+  expect(screen.getByRole("link", { name: "Scan a page" })).toHaveAttribute("href", "/scan")
+})

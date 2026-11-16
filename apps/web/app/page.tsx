@@ -6,6 +6,7 @@ import { TotalHeader } from "@/components/collection/total-header"
 import { collectionFilterOptions, collectionTotals, listCollection } from "@/lib/collection"
 import { getDb } from "@/lib/db"
 import { parseFilters } from "@/lib/params"
+import { addedNote } from "@/lib/scan-history"
 
 export const dynamic = "force-dynamic"
 
@@ -17,9 +18,15 @@ export default async function CollectionPage({ searchParams }: Props) {
   const filters = parseFilters(raw, { setIds: options.sets.map((set) => set.id), variants: options.variants })
   const rows = await listCollection(db, filters)
   const filtered = Boolean(filters.setId || filters.variant || filters.condition)
+  const scanned = typeof raw.scanned === "string" && /^\d+$/.test(raw.scanned) ? await addedNote(db, Number(raw.scanned)) : null
 
   return (
     <div className="space-y-8">
+      {scanned ? (
+        <p role="status" className="rounded border border-line bg-surface px-3 py-2 text-sm">
+          {scanned}
+        </p>
+      ) : null}
       <TotalHeader {...totals} />
       <AddCard />
       <section aria-label="Your cards" className="space-y-4">

@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { formatUsd } from "@/lib/money"
 
 type Props = { totalCents: number; changeCents: number | null; unpricedCount: number }
@@ -26,6 +27,11 @@ function TotalHeader({ totalCents, changeCents, unpricedCount }: Props) {
           </span>
         )}
         <span>Values use market price and ignore condition.</span>
+      </p>
+      <p className="pt-2">
+        <Link href="/scan" className="inline-flex h-10 items-center rounded border border-ink px-4 text-sm font-semibold no-underline">
+          Scan a page
+        </Link>
       </p>
     </section>
   )
