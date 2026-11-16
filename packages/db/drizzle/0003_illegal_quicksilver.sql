@@ -1,0 +1,1 @@
+ALTER TABLE "scan_results" ADD COLUMN "removed_at" timestamp with time zone;

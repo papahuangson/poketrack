@@ -1,5 +1,6 @@
 import { scanResults, scans, sets, type Db } from "@poketrack/db"
 import { upsertCards } from "@poketrack/jobs"
+import { commitScan } from "./scan-commit"
 
 type CardSeed = { id: string; name: string; setId: string; number: string; variants: string[] }
 
@@ -78,5 +79,11 @@ async function seedScan(
   return { scanId: scan!.id, resultIds: rows.map((r) => r.id) }
 }
 
-export { CARDS, seedCards, seedScan }
+async function commitPage(db: Db, opts: Parameters<typeof seedScan>[1]): Promise<{ scanId: number; resultIds: number[] }> {
+  const seeded = await seedScan(db, opts)
+  await commitScan(db, seeded.scanId)
+  return seeded
+}
+
+export { CARDS, commitPage, seedCards, seedScan }
 export type { PocketSeed }

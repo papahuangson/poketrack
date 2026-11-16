@@ -26,6 +26,13 @@ test("binder defaults to the last-used binder and page to its last page + 1", as
   expect(screen.getByRole("spinbutton", { name: "Page" })).toHaveValue(4)
 })
 
+test("a page handed in from the binder view starts the page field there", async () => {
+  const lookupPage = vi.fn(async () => null)
+  render(<CaptureForm binders={binders} initialBinder="Main" initialPage={2} lookupPage={lookupPage} />)
+  expect(screen.getByRole("spinbutton", { name: "Page" })).toHaveValue(2)
+  await waitFor(() => expect(lookupPage).toHaveBeenCalledWith("Main", 2))
+})
+
 test("a replace notice shows when the page already has a committed scan", async () => {
   const lookupPage = vi.fn(async () => ({ id: 2, committedAt: "2026-11-15T18:00:00.000Z", cards: 8 }))
   render(<CaptureForm binders={binders} initialBinder="Main" lookupPage={lookupPage} />)

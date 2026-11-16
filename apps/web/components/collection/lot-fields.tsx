@@ -7,7 +7,7 @@ import { variantLabel } from "@/lib/variants"
 
 type Lot = { variant: string; condition: Condition; quantity: number | null }
 
-type Props = { cardVariants: string[]; lot: Lot; onChange: (lot: Lot) => void; invalidField?: string }
+type Props = { cardVariants: string[]; lot: Lot; onChange: (lot: Lot) => void; invalidField?: string; minQuantity?: number }
 
 function variantOptions(cardVariants: string[], current: string) {
   const values = cardVariants.length > 0 ? [...cardVariants] : ["normal"]
@@ -15,7 +15,7 @@ function variantOptions(cardVariants: string[], current: string) {
   return values.map((value) => ({ value, label: variantLabel(value) }))
 }
 
-function LotFields({ cardVariants, lot, onChange, invalidField }: Props) {
+function LotFields({ cardVariants, lot, onChange, invalidField, minQuantity }: Props) {
   return (
     <div className="grid grid-cols-2 gap-3">
       <LabeledSelect
@@ -33,6 +33,7 @@ function LotFields({ cardVariants, lot, onChange, invalidField }: Props) {
       <div className="col-span-2">
         <QuantityInput
           value={lot.quantity}
+          min={minQuantity}
           invalid={invalidField === "quantity"}
           onValueChange={(quantity) => onChange({ ...lot, quantity })}
         />
@@ -41,5 +42,5 @@ function LotFields({ cardVariants, lot, onChange, invalidField }: Props) {
   )
 }
 
-export { LotFields }
+export { LotFields, variantOptions }
 export type { Lot }

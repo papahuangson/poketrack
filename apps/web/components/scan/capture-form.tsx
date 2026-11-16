@@ -18,6 +18,8 @@ type BinderInfo = { name: string; lastPage: number | null }
 type Props = {
   binders: BinderInfo[]
   initialBinder: string
+  /** Page to start on, when the binder view sent us here to scan a specific page. */
+  initialPage?: number
   lookupPage: (binder: string, page: number) => Promise<CommittedScan | null>
 }
 type Uploaded = { url: string; width: number; height: number }
@@ -28,10 +30,10 @@ const nextPageFor = (binders: BinderInfo[], binder: string) =>
 const shortDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/Chicago" })
 
-function CaptureForm({ binders, initialBinder, lookupPage }: Props) {
+function CaptureForm({ binders, initialBinder, initialPage, lookupPage }: Props) {
   const router = useRouter()
   const [binder, setBinder] = useState(initialBinder)
-  const [page, setPage] = useState(() => nextPageFor(binders, initialBinder))
+  const [page, setPage] = useState(() => initialPage ?? nextPageFor(binders, initialBinder))
   const [file, setFile] = useState<File | null>(null)
   const [existing, setExisting] = useState<CommittedScan | null>(null)
   const [status, setStatus] = useState<"idle" | "working">("idle")
