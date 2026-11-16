@@ -165,3 +165,37 @@ test("a photo that can't be loaded fails the scan", async () => {
   const [scan] = await db.select().from(scans).where(eq(scans.id, scanId))
   expect(scan?.error).toMatch(/couldn't load the photo/i)
 })
+
+async function commitRead(read: unknown[]) {
+  const { scanId } = await runScan(db, client(read), input, opts)
+  await db.update(scans).set({ status: "committed" }).where(eq(scans.id, scanId))
+  return resultsOf(scanId)
+}
+
+test("a rescan starts edited pockets with their edited condition", async () => {
+  const first = await commitRead(page)
+  await db.update(scanResults).set({ condition: "LP" }).where(eq(scanResults.id, first[1]!.id))
+  await db.update(scanResults).set({ variant: "normal", condition: "MP" }).where(eq(scanResults.id, first[0]!.id))
+  const { scanId } = await runScan(db, client(page), input, opts)
+  const results = await resultsOf(scanId)
+  expect(results[1]).toMatchObject({ chosenCardId: "base1-58", condition: "LP" })
+  expect(results[0]).toMatchObject({ chosenCardId: "sv3pt5-199", variant: "normal", condition: "MP" })
+  expect(results[5]?.condition).toBe("NM")
+})
+
+test("an edited pocket's condition beats a typed-in copy's condition", async () => {
+  const first = await commitRead([slot(1), slot(2)])
+  await db.update(scanResults).set({ condition: "LP" }).where(eq(scanResults.id, first[1]!.id))
+  await db.insert(collectionItems).values({ cardId: "base1-58", variant: "normal", quantity: 5, condition: "HP" })
+  const { scanId } = await runScan(db, client([slot(1), slot(2), slot(3)]), input, opts)
+  const results = await resultsOf(scanId)
+  expect(results[1]?.condition).toBe("LP")
+  expect(results[2]).toMatchObject({ claimManual: true, condition: "HP" })
+})
+
+test("a rescan that reads a different card in the slot starts from the defaults", async () => {
+  const first = await commitRead(page)
+  await db.update(scanResults).set({ condition: "LP" }).where(eq(scanResults.id, first[0]!.id))
+  const { scanId } = await runScan(db, client([slot(1)]), input, opts)
+  expect((await resultsOf(scanId))[0]).toMatchObject({ chosenCardId: "base1-58", condition: "NM" })
+})

@@ -1,5 +1,6 @@
 import { and, cards, collectionItems, eq, inArray, scanResults, scans, sql, type Db } from "@poketrack/db"
 import { ValidationError } from "@poketrack/db/errors"
+import { carryOver } from "./carry"
 import { claimDefaults } from "./claim"
 import { matchSlot, proposeVariant } from "./match"
 import { parseNumber } from "./parse"
@@ -79,7 +80,7 @@ async function runScan(db: Db, client: ModelClient, raw: NewScan, opts: RunOptio
           ),
     )
 
-    const rows = await Promise.all(
+    const proposed = await Promise.all(
       slots.map(async (s, i) => {
         const match = matches[i]
         const parsed = parseNumber(s.numberAsPrinted)
@@ -105,6 +106,9 @@ async function runScan(db: Db, client: ModelClient, raw: NewScan, opts: RunOptio
         }
       }),
     )
+    // A pocket that still holds the same card keeps the variant and condition it has in the page's current scan.
+    const carried = await carryOver(db, { binder: input.binder, page: input.page }, proposed)
+    const rows = proposed.map((r, i) => (carried[i] ? { ...r, variant: carried[i]!.variant } : r))
     const claims = await claimDefaults(
       db,
       { binder: input.binder, page: input.page, scanId: scan.id },
@@ -114,6 +118,7 @@ async function runScan(db: Db, client: ModelClient, raw: NewScan, opts: RunOptio
       ...r,
       claimManual: claims[i]!.claim,
       ...(claims[i]!.condition ? { condition: claims[i]!.condition! } : {}),
+      ...(carried[i] ? { condition: carried[i]!.condition } : {}),
     }))
 
     await db.transaction(async (tx) => {
