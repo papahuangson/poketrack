@@ -179,15 +179,23 @@ function isRealDate(text: string): boolean {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === text
 }
 
+function checkPaid(paidCents: number | null): void {
+  if (paidCents !== null && (!Number.isInteger(paidCents) || paidCents < 0)) {
+    throw new ValidationError("paidCents", "Paid price cannot be negative.")
+  }
+}
+
+function checkAcquiredOn(acquiredOn: string | null): void {
+  if (acquiredOn !== null && (!isRealDate(acquiredOn) || acquiredOn > chicagoDate())) {
+    throw new ValidationError("acquiredOn", "Enter a real date that is not in the future.")
+  }
+}
+
 async function updateItem(db: Db, id: number, input: EditInput): Promise<void> {
   checkQuantity(input.quantity)
   checkLot(input.variant, input.condition)
-  if (input.paidCents !== null && (!Number.isInteger(input.paidCents) || input.paidCents < 0)) {
-    throw new ValidationError("paidCents", "Paid price cannot be negative.")
-  }
-  if (input.acquiredOn !== null && (!isRealDate(input.acquiredOn) || input.acquiredOn > chicagoDate())) {
-    throw new ValidationError("acquiredOn", "Enter a real date that is not in the future.")
-  }
+  checkPaid(input.paidCents)
+  checkAcquiredOn(input.acquiredOn)
   const binder = binderOf(input.binder)
 
   const [current] = await db.select({ cardId: collectionItems.cardId }).from(collectionItems).where(eq(collectionItems.id, id))
@@ -320,10 +328,15 @@ async function defaultVariant(db: Db, cardVariants: string[]): Promise<string> {
 
 export {
   addItem,
+  checkAcquiredOn,
+  checkLot,
+  checkPaid,
   collectionFilterOptions,
   collectionTotals,
   defaultVariant,
+  escapeLike,
   listCollection,
+  parseQuery,
   removeItem,
   searchCards,
   updateItem,

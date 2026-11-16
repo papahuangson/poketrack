@@ -1,5 +1,7 @@
 import { sql, type Condition, type Db, type SQL } from "@poketrack/db"
+import { normalizeText } from "@poketrack/jobs"
 import { listBinders } from "./binders"
+import { escapeLike, parseQuery } from "./collection"
 
 type PocketState = "card" | "empty" | "missing"
 
@@ -177,5 +179,203 @@ async function pocketCounts(db: Db, lotIds: number[]): Promise<Map<number, numbe
   return new Map(found.map((r) => [r.lotId, r.pockets]))
 }
 
-export { binderPageCount, LIVE_POCKETS, latestCents, loadBinderPage, loadUnplaced, pocketCounts, resolveBinder, rows }
-export type { BinderPage, PocketState, PocketView, UnplacedLot }
+type Where =
+  | { kind: "pocket"; binder: string; page: number; slot: number; resultId: number }
+  | { kind: "unplaced"; binder: string; lotId: number }
+  | { kind: "loose"; lotId: number }
+
+type OwnedHit = {
+  cardId: string
+  name: string
+  setName: string
+  number: string
+  printedTotal: number
+  imageSmall: string | null
+  variant: string
+  condition: Condition
+  where: Where
+}
+
+type CardRef = { resultId: number } | { lotId: number }
+
+type CardDetail = {
+  mode: "pocket" | "group"
+  resultId: number | null
+  lotId: number | null
+  cardId: string
+  name: string
+  setName: string
+  number: string
+  printedTotal: number
+  rarity: string | null
+  imageLarge: string | null
+  imageSmall: string | null
+  cardVariants: string[]
+  variant: string
+  condition: Condition
+  lot: { quantity: number; pocketed: number; surplus: number; paidCents: number | null; acquiredOn: string | null; binder: string | null } | null
+  price: { marketCents: number | null; previousCents: number | null; history: { date: string; cents: number }[] }
+  places: { where: Where; thisOne: boolean }[]
+  scanLink: { binder: string; page: number } | null
+}
+
+const HISTORY_DAYS = 90
+const DAY_MS = 24 * 60 * 60 * 1000
+
+// Every place an owned copy is: present pockets (kind 0), copies in a binder that no pocket accounts for (1),
+// and copies with no binder (2).
+const OWNED_PLACES = sql`
+  select 0 as kind, l.card_id, l.variant, l.condition, l.binder, l.page, l.slot, l.result_id, l.lot_id
+  from (${LIVE_POCKETS}) l
+  where l.present
+  union all
+  select case when coalesce(trim(ci.binder), '') = '' then 2 else 1 end as kind, ci.card_id, ci.variant, ci.condition,
+         nullif(trim(ci.binder), '') as binder, null::int as page, null::int as slot, null::int as result_id, ci.id as lot_id
+  from collection_items ci
+  left join (select lot_id, count(*)::int as pockets from (${LIVE_POCKETS}) l2 group by lot_id) n on n.lot_id = ci.id
+  where ci.quantity - coalesce(n.pockets, 0) > 0`
+
+type PlaceRow = { kind: 0 | 1 | 2; binder: string | null; page: number | null; slot: number | null; resultId: number | null; lotId: number }
+
+function whereOf(row: PlaceRow): Where {
+  if (row.kind === 0) return { kind: "pocket", binder: row.binder!, page: row.page!, slot: row.slot!, resultId: row.resultId! }
+  if (row.kind === 1) return { kind: "unplaced", binder: row.binder!, lotId: row.lotId }
+  return { kind: "loose", lotId: row.lotId }
+}
+
+const PLACE_COLUMNS = sql`h.kind, h.binder, h.page, h.slot, h.result_id as "resultId", h.lot_id as "lotId"`
+const PLACE_ORDER = sql`h.kind, lower(h.binder), h.page, h.slot, h.lot_id`
+
+async function searchOwned(db: Db, q: string, limit = 20): Promise<OwnedHit[]> {
+  const whole = normalizeText(q)
+  const { name, number } = parseQuery(q)
+  if (whole.length < 2 && number === null) return []
+
+  // Same matching as searchCards in lib/collection.ts.
+  const contains = (text: string) => `%${escapeLike(text.replaceAll(" ", ""))}%`
+  const compact = sql`replace(c.name_search, ' ', '')`
+  const byNumber = sql`ltrim(substring(c.number from '^[0-9]+'), '0') = ${number}`
+  const byWholeName = sql`${compact} like ${contains(whole)}`
+  let where: SQL
+  let rankName = whole
+  if (number === null) {
+    where = byWholeName
+  } else if (name === "") {
+    where = whole.length >= 2 ? sql`(${byNumber} or ${byWholeName})` : byNumber
+  } else {
+    where = sql`(${byNumber} and ${compact} like ${contains(name)})`
+    rankName = name
+  }
+
+  const found = await rows<Omit<OwnedHit, "where"> & PlaceRow>(
+    db,
+    sql`
+      select c.id as "cardId", c.name, s.name as "setName", c.number, c.printed_total as "printedTotal",
+             c.image_small as "imageSmall", h.variant, h.condition, ${PLACE_COLUMNS}
+      from (${OWNED_PLACES}) h
+      join cards c on c.id = h.card_id
+      join sets s on s.id = c.set_id
+      where ${where}
+      order by
+        case when c.name_search = ${rankName} then 0
+             when c.name_search like ${`${escapeLike(rankName)}%`} then 1
+             else 2 end,
+        c.name, c.id, ${PLACE_ORDER}
+      limit ${limit}
+    `,
+  )
+  return found.map(({ kind, binder, page, slot, resultId, lotId, ...hit }) => ({ ...hit, where: whereOf({ kind, binder, page, slot, resultId, lotId }) }))
+}
+
+async function loadCardDetail(db: Db, ref: CardRef): Promise<CardDetail | null> {
+  let opened: { resultId: number | null; lotId: number | null; cardId: string; variant: string; condition: Condition; scanLink: CardDetail["scanLink"] }
+  if ("resultId" in ref) {
+    const [pocket] = await rows<{ lotId: number | null; cardId: string; variant: string | null; condition: Condition; binder: string; page: number; present: boolean }>(
+      db,
+      sql`select l.lot_id as "lotId", l.card_id as "cardId", l.variant, l.condition, l.binder, l.page, l.present
+          from (${LIVE_POCKETS}) l where l.result_id = ${ref.resultId}`,
+    )
+    if (!pocket || pocket.variant === null) return null
+    opened = {
+      resultId: ref.resultId,
+      lotId: pocket.present ? pocket.lotId : null,
+      cardId: pocket.cardId,
+      variant: pocket.variant,
+      condition: pocket.condition,
+      scanLink: { binder: pocket.binder, page: pocket.page },
+    }
+  } else {
+    const [lot] = await rows<{ cardId: string; variant: string; condition: Condition }>(
+      db,
+      sql`select card_id as "cardId", variant, condition from collection_items where id = ${ref.lotId}`,
+    )
+    if (!lot) return null
+    opened = { resultId: null, lotId: ref.lotId, ...lot, scanLink: null }
+  }
+
+  const [card] = await rows<Pick<CardDetail, "name" | "setName" | "number" | "printedTotal" | "rarity" | "imageLarge" | "imageSmall" | "cardVariants">>(
+    db,
+    sql`select c.name, s.name as "setName", c.number, c.printed_total as "printedTotal", c.rarity,
+               c.image_large as "imageLarge", c.image_small as "imageSmall", c.variants as "cardVariants"
+        from cards c join sets s on s.id = c.set_id where c.id = ${opened.cardId}`,
+  )
+  if (!card) return null
+
+  let lot: CardDetail["lot"] = null
+  if (opened.lotId !== null) {
+    const [found] = await rows<{ quantity: number; paidCents: number | null; acquiredOn: string | null; binder: string | null }>(
+      db,
+      sql`select quantity, round(paid_usd * 100)::int as "paidCents", acquired_on::text as "acquiredOn", binder
+          from collection_items where id = ${opened.lotId}`,
+    )
+    if (found) {
+      const pocketed = (await pocketCounts(db, [opened.lotId])).get(opened.lotId) ?? 0
+      lot = { ...found, pocketed, surplus: Math.max(0, found.quantity - pocketed) }
+    }
+  }
+
+  const snapshots = await rows<{ date: string; cents: number }>(
+    db,
+    sql`select date::text as date, round(market_usd * 100)::int as cents from price_snapshots
+        where card_id = ${opened.cardId} and variant = ${opened.variant} and market_usd is not null
+        order by date desc`,
+  )
+  const newest = snapshots[0]
+  const history = newest
+    ? snapshots.filter((s) => Date.parse(newest.date) - Date.parse(s.date) <= HISTORY_DAYS * DAY_MS).reverse()
+    : []
+
+  const places = await rows<PlaceRow>(
+    db,
+    sql`select ${PLACE_COLUMNS} from (${OWNED_PLACES}) h where h.card_id = ${opened.cardId} order by ${PLACE_ORDER}`,
+  )
+
+  return {
+    mode: opened.resultId !== null ? "pocket" : "group",
+    resultId: opened.resultId,
+    lotId: lot ? opened.lotId : null,
+    cardId: opened.cardId,
+    ...card,
+    variant: opened.variant,
+    condition: opened.condition,
+    lot,
+    price: { marketCents: newest?.cents ?? null, previousCents: snapshots[1]?.cents ?? null, history },
+    places: places.map((row) => ({
+      where: whereOf(row),
+      thisOne: row.kind === 0 ? row.resultId === opened.resultId : opened.resultId === null && row.lotId === opened.lotId,
+    })),
+    scanLink: opened.scanLink,
+  }
+}
+
+export {
+  binderPageCount,
+  LIVE_POCKETS,
+  loadBinderPage,
+  loadCardDetail,
+  loadUnplaced,
+  pocketCounts,
+  resolveBinder,
+  searchOwned,
+}
+export type { BinderPage, CardDetail, CardRef, OwnedHit, PocketState, PocketView, UnplacedLot, Where }

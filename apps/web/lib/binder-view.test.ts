@@ -2,7 +2,7 @@ import { collectionItems, priceSnapshots, scanResults, type Db } from "@poketrac
 import { createTestDb } from "@poketrack/db/testing"
 import { eq } from "drizzle-orm"
 import { beforeEach, expect, test } from "vitest"
-import { loadBinderPage, loadUnplaced, pocketCounts, resolveBinder } from "./binder-view"
+import { loadBinderPage, loadCardDetail, loadUnplaced, pocketCounts, resolveBinder, searchOwned } from "./binder-view"
 import { addItem } from "./collection"
 import { commitPage, seedCards } from "./scan-fixtures"
 
@@ -111,4 +111,124 @@ test("unplaced lists surplus copies and pocketless lots", async () => {
   expect(await pocketCounts(db, [])).toEqual(new Map())
   await db.update(scanResults).set({ removedAt: new Date() }).where(eq(scanResults.id, resultIds[0]!))
   expect((await loadUnplaced(db, "Main")).find((u) => u.lotId === pika.id)?.surplus).toBe(3)
+})
+
+test("search finds owned cards by name, number and both", async () => {
+  const { resultIds } = await commitPage(db, { pockets: [{ card: "base1-58" }, { card: "sv3pt5-199", variant: "holofoil" }] })
+  for (const q of ["char", "199", "charizard 199/165"]) {
+    const hits = await searchOwned(db, q)
+    expect(hits, q).toHaveLength(1)
+    expect(hits[0]).toEqual({
+      cardId: "sv3pt5-199",
+      name: "Charizard ex",
+      setName: "151",
+      number: "199",
+      printedTotal: 165,
+      imageSmall: "https://img.test/sv3pt5-199.webp",
+      variant: "holofoil",
+      condition: "NM",
+      where: { kind: "pocket", binder: "Main", page: 3, slot: 2, resultId: resultIds[1] },
+    })
+  }
+})
+
+test("search covers every binder, unplaced and loose lots, and ignores unowned cards", async () => {
+  expect(await searchOwned(db, "mew")).toEqual([])
+  const trade = await commitPage(db, { binder: "Trade", page: 1, pockets: [{ card: "base1-58" }] })
+  const surplus = await addItem(db, { cardId: "base1-58", variant: "normal", condition: "LP", quantity: 2, binder: "Main" })
+  const loose = await addItem(db, { cardId: "base1-58", variant: "normal", condition: "NM", quantity: 1 })
+  expect((await searchOwned(db, "pika")).map((h) => h.where)).toEqual([
+    { kind: "pocket", binder: "Trade", page: 1, slot: 1, resultId: trade.resultIds[0] },
+    { kind: "unplaced", binder: "Main", lotId: surplus.id },
+    { kind: "loose", lotId: loose.id },
+  ])
+  expect(await searchOwned(db, "mew")).toEqual([])
+  expect(await searchOwned(db, "pika", 2)).toHaveLength(2)
+})
+
+test("search skips pockets whose copy is gone", async () => {
+  await commitPage(db, { pockets: [{ card: "base1-58" }] })
+  await db.delete(collectionItems)
+  expect(await searchOwned(db, "pika")).toEqual([])
+})
+
+test("odd search input returns nothing", async () => {
+  await commitPage(db, { pockets: [{ card: "base1-58" }, { card: "sv3pt5-199" }] })
+  for (const q of ["c", "%", "_", "   ", "", "%%", "__"]) expect(await searchOwned(db, q), JSON.stringify(q)).toEqual([])
+})
+
+test("detail for a pocket", async () => {
+  const { resultIds } = await commitPage(db, { pockets: [{ card: "base1-58" }, { card: "base1-58" }, { card: "sv3pt5-199" }] })
+  const detail = await loadCardDetail(db, { resultId: resultIds[1]! })
+  expect(detail).toMatchObject({
+    mode: "pocket",
+    resultId: resultIds[1],
+    cardId: "base1-58",
+    name: "Pikachu",
+    setName: "Base",
+    number: "58",
+    printedTotal: 102,
+    rarity: null,
+    imageLarge: null,
+    imageSmall: "https://img.test/base1-58.webp",
+    cardVariants: ["normal"],
+    variant: "normal",
+    condition: "NM",
+    lot: { quantity: 2, pocketed: 2, surplus: 0, paidCents: null, acquiredOn: null, binder: "Main" },
+    price: { marketCents: null, previousCents: null, history: [] },
+    scanLink: { binder: "Main", page: 3 },
+  })
+  expect(detail!.lotId).toEqual(expect.any(Number))
+  expect(detail!.places).toEqual([
+    { where: { kind: "pocket", binder: "Main", page: 3, slot: 1, resultId: resultIds[0] }, thisOne: false },
+    { where: { kind: "pocket", binder: "Main", page: 3, slot: 2, resultId: resultIds[1] }, thisOne: true },
+  ])
+})
+
+test("detail for a missing pocket has no lot", async () => {
+  const { resultIds } = await commitPage(db, { pockets: [{ card: "base1-58" }] })
+  await db.delete(collectionItems)
+  expect(await loadCardDetail(db, { resultId: resultIds[0]! })).toMatchObject({ mode: "pocket", lot: null, lotId: null, name: "Pikachu", places: [], scanLink: { binder: "Main", page: 3 } })
+})
+
+test("detail for a lot has group mode and surplus", async () => {
+  await commitPage(db, { pockets: [{ card: "base1-58" }] })
+  const lot = await addItem(db, { cardId: "base1-58", variant: "normal", condition: "NM", quantity: 2, binder: "Main" })
+  await db.update(collectionItems).set({ paidUsd: 3.5, acquiredOn: "2026-10-01" }).where(eq(collectionItems.id, lot.id))
+  const detail = await loadCardDetail(db, { lotId: lot.id })
+  expect(detail).toMatchObject({
+    mode: "group",
+    resultId: null,
+    lotId: lot.id,
+    lot: { quantity: 3, pocketed: 1, surplus: 2, paidCents: 350, acquiredOn: "2026-10-01", binder: "Main" },
+    scanLink: null,
+  })
+  expect(detail!.places.map((p) => [p.where.kind, p.thisOne])).toEqual([
+    ["pocket", false],
+    ["unplaced", true],
+  ])
+})
+
+test("price history is the last 90 days ascending", async () => {
+  const { resultIds } = await commitPage(db, { pockets: [{ card: "base1-58" }] })
+  await db.insert(priceSnapshots).values([
+    snapshot("base1-58", "normal", "2026-11-14", 4.1),
+    snapshot("base1-58", "normal", "2026-10-15", 3),
+    snapshot("base1-58", "normal", "2026-08-06", 2),
+  ])
+  expect((await loadCardDetail(db, { resultId: resultIds[0]! }))!.price).toEqual({
+    marketCents: 410,
+    previousCents: 300,
+    history: [
+      { date: "2026-10-15", cents: 300 },
+      { date: "2026-11-14", cents: 410 },
+    ],
+  })
+})
+
+test("unknown refs return null", async () => {
+  const { resultIds } = await commitPage(db, { pockets: [{ card: "base1-58" }, { empty: true }] })
+  expect(await loadCardDetail(db, { resultId: 9999 })).toBeNull()
+  expect(await loadCardDetail(db, { lotId: 9999 })).toBeNull()
+  expect(await loadCardDetail(db, { resultId: resultIds[1]! })).toBeNull()
 })
