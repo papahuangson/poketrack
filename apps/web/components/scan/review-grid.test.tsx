@@ -128,3 +128,29 @@ test("a scan that is still reading says so instead of 'already added'", () => {
   expect(screen.getByText(/still reading/i)).toBeInTheDocument()
   expect(screen.queryByText(/already added/i)).toBeNull()
 })
+
+test("a confirmed pocket's card can be changed", async () => {
+  render(<ReviewGrid review={makeReview()} />)
+  const box = within(pocketEl(1)).getByRole("combobox", { name: "Card in pocket 1" })
+  await userEvent.click(box)
+  await userEvent.click(await screen.findByRole("option", { name: /Charizard/ }))
+  expect(updateSlotAction).toHaveBeenCalledWith(101, { chosenCardId: CHARIZARD.id })
+})
+
+test("a rejected pocket can be checked again", async () => {
+  const review = makeReview()
+  review.slots[1] = { ...review.slots[1]!, decision: "rejected" }
+  render(<ReviewGrid review={review} />)
+  await userEvent.click(within(pocketEl(2)).getByRole("button", { name: "Check again" }))
+  await waitFor(() => expect(updateSlotAction).toHaveBeenCalledWith(102, { decision: "pending" }))
+  expect(within(pocketEl(2)).getByText("Check")).toBeInTheDocument()
+})
+
+test("an unrecognized pocket rejected by mistake can be checked again and given a card", async () => {
+  const review = makeReview()
+  review.slots[5] = { ...review.slots[5]!, decision: "rejected", chosen: null, variant: null, candidates: [] }
+  render(<ReviewGrid review={review} />)
+  expect(within(pocketEl(6)).getByRole("combobox", { name: "Card in pocket 6" })).toBeInTheDocument()
+  await userEvent.click(within(pocketEl(6)).getByRole("button", { name: "Check again" }))
+  await waitFor(() => expect(updateSlotAction).toHaveBeenCalledWith(106, { decision: "pending" }))
+})

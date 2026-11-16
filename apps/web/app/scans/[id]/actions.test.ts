@@ -91,3 +91,15 @@ test("choosing a card that claims a copy takes that copy's condition", async () 
   await updateSlotAction(resultIds[0]!, { chosenCardId: "sv3pt5-151" })
   expect(await stored(resultIds[0]!)).toMatchObject({ claimManual: true, condition: "HP" })
 })
+
+test("a rejected pocket can go back to pending", async () => {
+  const { resultIds } = await seedScan(db, { pockets: [{ card: "base1-58", decision: "rejected" }] })
+  expect(await updateSlotAction(resultIds[0]!, { decision: "pending" })).toEqual({ ok: true })
+  expect((await stored(resultIds[0]!)).decision).toBe("pending")
+})
+
+test("changing the card of a confirmed pocket keeps it confirmed", async () => {
+  const { resultIds } = await seedScan(db, { pockets: [{ card: "base1-58" }] })
+  await updateSlotAction(resultIds[0]!, { chosenCardId: "sv3pt5-151" })
+  expect(await stored(resultIds[0]!)).toMatchObject({ chosenCardId: "sv3pt5-151", decision: "confirmed" })
+})

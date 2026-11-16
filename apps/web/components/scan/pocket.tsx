@@ -73,7 +73,7 @@ const Pocket = forwardRef<HTMLElement, Props>(function Pocket({ pocket, photo, r
             <span className={`shrink-0 text-xs ${pocket.decision === "pending" ? "font-semibold" : "text-ink-soft"}`}>{STATUS[pocket.decision]}</span>
           </div>
 
-          {!readOnly && pocket.decision === "pending" ? <PocketCardPicker slot={pocket.slot} candidates={candidateHits} onPick={pick} /> : null}
+          {!readOnly ? <PocketCardPicker slot={pocket.slot} candidates={candidateHits} onPick={pick} /> : null}
 
           {!readOnly && card ? (
             <div className="grid grid-cols-2 gap-1">
@@ -124,15 +124,26 @@ const Pocket = forwardRef<HTMLElement, Props>(function Pocket({ pocket, photo, r
               >
                 Confirm
               </button>
-              <button
-                type="button"
-                tabIndex={-1}
-                disabled={pocket.decision === "rejected"}
-                onClick={() => onChange({ decision: "rejected" }, { decision: "rejected" })}
-                className="rounded border border-line px-2 py-0.5 disabled:opacity-40"
-              >
-                Reject
-              </button>
+              {pocket.decision === "rejected" ? null : (
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => onChange({ decision: "rejected" }, { decision: "rejected" })}
+                  className="rounded border border-line px-2 py-0.5"
+                >
+                  Reject
+                </button>
+              )}
+              {pocket.decision === "pending" ? null : (
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => onChange({ decision: "pending" }, { decision: "pending" })}
+                  className="rounded border border-line px-2 py-0.5"
+                >
+                  Check again
+                </button>
+              )}
             </div>
           ) : null}
           {error ? (
