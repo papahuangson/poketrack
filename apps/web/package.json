@@ -10,11 +10,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "@poketrack/db": "workspace:*",
     "@poketrack/jobs": "workspace:*",
     "@poketrack/scan": "workspace:*",
     "@ui-sdk/core": "0.1.0-beta.1",
     "@ui-sdk/react": "0.1.0-beta.1",
+    "@vercel/blob": "^2.9.0",
     "drizzle-orm": "^0.45.0",
     "next": "16.4.6",
     "pg": "^8.16.0",
