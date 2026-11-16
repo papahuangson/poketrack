@@ -15,6 +15,8 @@ type Props = {
   readOnly: boolean
   error: string | null
   focusable: boolean
+  current?: boolean
+  className?: string
   onChange: (patch: SlotPatch, optimistic: Partial<ReviewSlot>) => void
   onKeyDown: (event: KeyboardEvent<HTMLElement>) => void
   onFocus: () => void
@@ -22,14 +24,17 @@ type Props = {
 
 const STATUS: Record<Decision, string> = { confirmed: "Matched", pending: "Check", rejected: "Rejected" }
 
-const Pocket = forwardRef<HTMLElement, Props>(function Pocket({ pocket, photo, readOnly, error, focusable, onChange, onKeyDown, onFocus }, ref) {
+const Pocket = forwardRef<HTMLElement, Props>(function Pocket({ pocket, photo, readOnly, error, focusable, current, className, onChange, onKeyDown, onFocus }, ref) {
   const card = pocket.chosen
   const name = pocket.empty ? "empty" : (card?.name ?? "not recognized")
   const showClaim = !readOnly && card !== null && (pocket.claimManual || (pocket.manualLot?.available ?? 0) > 0)
   const candidateHits: CardHit[] = pocket.candidates.map(({ cardId: _c, score: _s, via: _v, ...hit }) => hit)
 
+  // Picking a card is the answer to "which card is this?", so it also confirms the pocket. Without
+  // that, picking the card already shown changed nothing you could see.
   function pick(hit: CardHit) {
-    onChange({ chosenCardId: hit.id }, { chosen: hit, variant: hit.variants[0] ?? null })
+    const variant = hit.id === card?.id ? pocket.variant : (hit.variants[0] ?? null)
+    onChange({ chosenCardId: hit.id, decision: "confirmed" }, { chosen: hit, variant, decision: "confirmed" })
   }
 
   return (
@@ -43,7 +48,8 @@ const Pocket = forwardRef<HTMLElement, Props>(function Pocket({ pocket, photo, r
         if (e.target === e.currentTarget) onFocus()
       }}
       data-decision={pocket.decision}
-      className={`flex min-w-0 flex-col gap-2 rounded border bg-surface p-2 outline-offset-2 focus:outline-2 focus:outline-ink ${
+      data-current={current ? "" : undefined}
+      className={`${className ?? ""} flex min-w-0 flex-col gap-2 rounded border bg-surface p-2 outline-offset-2 focus:outline-2 focus:outline-ink ${
         pocket.decision === "pending" && !pocket.empty ? "border-energy" : "border-line"
       } ${pocket.decision === "rejected" ? "opacity-60" : ""}`}
     >
@@ -73,7 +79,7 @@ const Pocket = forwardRef<HTMLElement, Props>(function Pocket({ pocket, photo, r
             <span className={`shrink-0 text-xs ${pocket.decision === "pending" ? "font-semibold" : "text-ink-soft"}`}>{STATUS[pocket.decision]}</span>
           </div>
 
-          {!readOnly ? <PocketCardPicker slot={pocket.slot} candidates={candidateHits} onPick={pick} /> : null}
+          {!readOnly ? <PocketCardPicker slot={pocket.slot} candidates={candidateHits} hasCard={card !== null} onPick={pick} /> : null}
 
           {!readOnly && card ? (
             <div className="grid grid-cols-2 gap-1">
@@ -114,7 +120,7 @@ const Pocket = forwardRef<HTMLElement, Props>(function Pocket({ pocket, photo, r
           ))}
 
           {!readOnly ? (
-            <div className="flex gap-2 text-sm">
+            <div className="flex gap-2 text-sm max-sm:[&>button]:h-11 max-sm:[&>button]:flex-1">
               <button
                 type="button"
                 tabIndex={-1}

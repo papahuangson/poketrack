@@ -2,7 +2,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, expect, test, vi } from "vitest"
-import { CHARIZARD, makeReview, PIKACHU } from "./review-fixture"
+import { CHARIZARD, makeReview, MEW, PIKACHU } from "./review-fixture"
 
 const updateSlotAction = vi.fn()
 const commitScanAction = vi.fn()
@@ -110,7 +110,7 @@ test("a rescan shows the change and a Replace page button", () => {
 test("committed scans render read-only", () => {
   const review = makeReview()
   render(<ReviewGrid review={{ ...review, scan: { ...review.scan, status: "committed" } }} />)
-  expect(screen.queryByRole("button")).toBeNull()
+  expect(screen.queryByRole("button", { name: /Confirm|Reject|Check again|Add|Replace/ })).toBeNull()
   expect(screen.queryByRole("combobox")).toBeNull()
   expect(screen.getByText(/already added/i)).toBeInTheDocument()
 })
@@ -134,7 +134,53 @@ test("a confirmed pocket's card can be changed", async () => {
   const box = within(pocketEl(1)).getByRole("combobox", { name: "Card in pocket 1" })
   await userEvent.click(box)
   await userEvent.click(await screen.findByRole("option", { name: /Charizard/ }))
-  expect(updateSlotAction).toHaveBeenCalledWith(101, { chosenCardId: CHARIZARD.id })
+  expect(updateSlotAction).toHaveBeenCalledWith(101, { chosenCardId: CHARIZARD.id, decision: "confirmed" })
+})
+
+test("picking the card already shown confirms it", async () => {
+  render(<ReviewGrid review={makeReview()} />)
+  await userEvent.click(within(pocketEl(3)).getByRole("combobox", { name: "Card in pocket 3" }))
+  await userEvent.click(await screen.findByRole("option", { name: /Mew ex/ }))
+  expect(updateSlotAction).toHaveBeenCalledWith(103, { chosenCardId: MEW.id, decision: "confirmed" })
+  expect(within(pocketEl(3)).getByText("Matched")).toBeInTheDocument()
+})
+
+test("picking another card shows it right away and confirms it", async () => {
+  render(<ReviewGrid review={makeReview()} />)
+  await userEvent.click(within(pocketEl(3)).getByRole("combobox", { name: "Card in pocket 3" }))
+  await userEvent.click(await screen.findByRole("option", { name: /Pikachu/ }))
+  expect(updateSlotAction).toHaveBeenCalledWith(103, { chosenCardId: PIKACHU.id, decision: "confirmed" })
+  expect(within(pocketEl(3)).getByRole("img", { name: "Catalog image of Pikachu" })).toBeInTheDocument()
+})
+
+test("one pocket at a time starts on the first to check and steps with Next and Previous", async () => {
+  render(<ReviewGrid review={makeReview()} />)
+  expect(screen.getByText("Pocket 3 of 9")).toBeInTheDocument()
+  expect(pocketEl(3)).toHaveAttribute("data-current")
+  await userEvent.click(screen.getByRole("button", { name: "Next pocket" }))
+  expect(screen.getByText("Pocket 4 of 9")).toBeInTheDocument()
+  await userEvent.click(screen.getByRole("button", { name: "Previous pocket" }))
+  await userEvent.click(screen.getByRole("button", { name: "Previous pocket" }))
+  expect(screen.getByText("Pocket 2 of 9")).toBeInTheDocument()
+})
+
+test("confirming a pocket moves on to the next one to check", async () => {
+  const review = makeReview()
+  review.slots[5] = { ...review.slots[5]!, decision: "pending" }
+  render(<ReviewGrid review={review} />)
+  expect(screen.getByText("Pocket 3 of 9")).toBeInTheDocument()
+  await userEvent.click(within(pocketEl(3)).getByRole("button", { name: "Confirm" }))
+  await waitFor(() => expect(screen.getByText("Pocket 6 of 9")).toBeInTheDocument())
+})
+
+test("View all shows every pocket at a glance and opens the one you tap", async () => {
+  render(<ReviewGrid review={makeReview()} />)
+  await userEvent.click(screen.getByRole("button", { name: "View all" }))
+  const overview = screen.getByRole("list", { name: "All pockets" })
+  expect(within(overview).getAllByRole("button")).toHaveLength(9)
+  await userEvent.click(within(overview).getByRole("button", { name: /^Pocket 5: Pikachu, Matched/ }))
+  expect(screen.queryByRole("list", { name: "All pockets" })).toBeNull()
+  expect(screen.getByText("Pocket 5 of 9")).toBeInTheDocument()
 })
 
 test("a rejected pocket can be checked again", async () => {

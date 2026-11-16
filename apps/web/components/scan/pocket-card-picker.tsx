@@ -22,9 +22,9 @@ async function search(query: string, { signal }: { signal: AbortSignal }): Promi
   return ((await response.json()) as CardHit[]).map((hit) => ({ value: hit.id, label: hit.name, hit }))
 }
 
-type Props = { slot: number; candidates: CardHit[]; onPick: (card: CardHit) => void }
+type Props = { slot: number; candidates: CardHit[]; hasCard: boolean; onPick: (card: CardHit) => void }
 
-function PocketCardPicker({ slot, candidates, onPick }: Props) {
+function PocketCardPicker({ slot, candidates, hasCard, onPick }: Props) {
   const found = useAsyncOptions(search, { debounce: 200 })
   const [query, setQuery] = useState("")
   const seeded: Option[] = candidates.map((hit) => ({ value: hit.id, label: hit.name, hit }))
@@ -50,7 +50,7 @@ function PocketCardPicker({ slot, candidates, onPick }: Props) {
       }}
     >
       <ComboboxLabel className="sr-only">Card in pocket {slot}</ComboboxLabel>
-      <ComboboxInput placeholder="Pick or search…" className="h-9 w-full text-sm" />
+      <ComboboxInput placeholder={hasCard ? "Wrong card? Pick or search…" : "Pick or search…"} className="h-9 w-full text-sm" />
       <ComboboxContent>
         <ComboboxEmpty>{(state) => (state.empty && !state.loading ? "No cards found." : null)}</ComboboxEmpty>
         <ComboboxList>

@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition, type KeyboardEvent } from "react"
 import { commitScanAction, updateSlotAction } from "@/app/scans/[id]/actions"
 import type { Review, ReviewSlot, SlotPatch } from "@/lib/scan-review"
+import { Crop } from "./crop"
 import { Pocket } from "./pocket"
 
 const MOVES: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 3, ArrowUp: -3 }
@@ -15,10 +16,26 @@ function summary(slots: ReviewSlot[]): string {
   return [`${matched} matched`, `${check} check`, `${empty} empty`, ...(rejected ? [`${rejected} rejected`] : [])].join(" · ")
 }
 
+const STATUS_LABEL = { confirmed: "Matched", pending: "Check", rejected: "Rejected" } as const
+
+const toCheck = (s: ReviewSlot) => !s.empty && s.decision === "pending"
+
+// The next pocket still to check after `from`, wrapping around; `from` itself when none is left.
+function nextToCheck(slots: ReviewSlot[], from: number): number {
+  for (let step = 1; step < slots.length; step++) {
+    const i = (from + step) % slots.length
+    if (toCheck(slots[i]!)) return i
+  }
+  return from
+}
+
 function ReviewGrid({ review }: { review: Review }) {
   const [slots, setSlots] = useState(review.slots)
   const [errors, setErrors] = useState<Record<number, string>>({})
-  const [focused, setFocused] = useState(0)
+  // The pocket shown on a phone, which is also the grid's keyboard stop.
+  const [current, setCurrent] = useState(() => Math.max(0, review.slots.findIndex(toCheck)))
+  // Phones show one pocket at a time, or every pocket small. Wider screens always show the grid.
+  const [view, setView] = useState<"one" | "all">("one")
   const [commitError, setCommitError] = useState<string | null>(null)
   const [committing, startCommit] = useTransition()
   const refs = useRef<(HTMLElement | null)[]>([])
@@ -38,12 +55,16 @@ function ReviewGrid({ review }: { review: Review }) {
 
   async function change(index: number, patch: SlotPatch, optimistic: Partial<ReviewSlot>) {
     const before = slots[index]!
-    setSlots((all) => all.map((s, i) => (i === index ? { ...s, ...optimistic } : s)))
+    const after = slots.map((s, i) => (i === index ? { ...s, ...optimistic } : s))
+    setSlots(after)
     setErrors(({ [before.id]: _gone, ...rest }) => rest)
+    const decided = optimistic.decision === "confirmed" || optimistic.decision === "rejected"
+    if (decided && index === current) setCurrent(nextToCheck(after, index))
     const result = await updateSlotAction(before.id, patch)
     if (!result.ok) {
       setSlots((all) => all.map((s, i) => (i === index ? before : s)))
       setErrors((all) => ({ ...all, [before.id]: result.message }))
+      if (decided) setCurrent(index)
     }
   }
 
@@ -55,7 +76,7 @@ function ReviewGrid({ review }: { review: Review }) {
       const sameRow = Math.abs(move) === 3 || Math.floor(next / 3) === Math.floor(index / 3)
       if (next >= 0 && next < slots.length && sameRow) {
         event.preventDefault()
-        setFocused(next)
+        setCurrent(next)
         refs.current[next]?.focus()
       }
       return
@@ -105,7 +126,79 @@ function ReviewGrid({ review }: { review: Review }) {
         <p className="text-sm text-ink-soft">We're still reading this photo. Refresh in a moment.</p>
       ) : null}
 
-      <div className="grid grid-cols-3 gap-2 sm:gap-3" aria-label="Pockets">
+      {slots.length > 0 ? (
+        <div className="flex items-center gap-2 sm:hidden">
+          {view === "one" ? (
+            <>
+              <button
+                type="button"
+                aria-label="Previous pocket"
+                disabled={current === 0}
+                onClick={() => setCurrent(current - 1)}
+                className="h-11 w-11 rounded border border-line bg-surface text-lg disabled:opacity-40"
+              >
+                ‹
+              </button>
+              <p className="flex-1 text-center text-sm font-semibold" aria-live="polite">
+                Pocket {current + 1} of {slots.length}
+              </p>
+              <button
+                type="button"
+                aria-label="Next pocket"
+                disabled={current === slots.length - 1}
+                onClick={() => setCurrent(current + 1)}
+                className="h-11 w-11 rounded border border-line bg-surface text-lg disabled:opacity-40"
+              >
+                ›
+              </button>
+              <button type="button" onClick={() => setView("all")} className="h-11 rounded border border-line bg-surface px-3 text-sm">
+                View all
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="flex-1 text-sm text-ink-soft">Tap a pocket to open it</p>
+              <button type="button" onClick={() => setView("one")} className="h-11 rounded border border-line bg-surface px-3 text-sm">
+                One at a time
+              </button>
+            </>
+          )}
+        </div>
+      ) : null}
+
+      {view === "all" ? (
+        <ul className="grid grid-cols-3 gap-2 sm:hidden" aria-label="All pockets">
+          {slots.map((pocket, index) => {
+            const name = pocket.empty ? "empty" : (pocket.chosen?.name ?? "not recognized")
+            const status = pocket.empty ? null : STATUS_LABEL[pocket.decision]
+            return (
+              <li key={pocket.id}>
+                <button
+                  type="button"
+                  aria-label={`Pocket ${pocket.slot}: ${name}${status ? `, ${status}` : ""}`}
+                  onClick={() => {
+                    setCurrent(index)
+                    setView("one")
+                  }}
+                  className={`flex w-full flex-col gap-1 rounded border bg-surface p-1 text-left ${
+                    toCheck(pocket) ? "border-energy border-2" : "border-line"
+                  } ${pocket.decision === "rejected" && !pocket.empty ? "opacity-60" : ""} ${index === current ? "outline-2 outline-ink" : ""}`}
+                >
+                  {pocket.empty ? (
+                    <span className="flex aspect-[63/88] items-center justify-center text-xs text-ink-soft">(empty)</span>
+                  ) : (
+                    <Crop imageUrl={photo.imageUrl} width={photo.width} height={photo.height} box={pocket.box} alt="" />
+                  )}
+                  <span className="truncate text-xs font-semibold">{pocket.empty ? "Empty" : (pocket.chosen?.name ?? "Not recognized")}</span>
+                  {status ? <span className={`text-xs ${pocket.decision === "pending" ? "font-semibold" : "text-ink-soft"}`}>{status}</span> : null}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+
+      <div className={`grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3 ${view === "all" ? "max-sm:hidden" : ""}`} aria-label="Pockets">
         {slots.map((pocket, index) => (
           <Pocket
             key={pocket.id}
@@ -116,8 +209,10 @@ function ReviewGrid({ review }: { review: Review }) {
             photo={photo}
             readOnly={readOnly}
             error={errors[pocket.id] ?? null}
-            focusable={index === focused}
-            onFocus={() => setFocused(index)}
+            focusable={index === current}
+            current={index === current}
+            className={index === current ? "" : "max-sm:hidden"}
+            onFocus={() => setCurrent(index)}
             onKeyDown={(e) => keyDown(index, e)}
             onChange={(patch, optimistic) => void change(index, patch, optimistic)}
           />
@@ -125,9 +220,9 @@ function ReviewGrid({ review }: { review: Review }) {
       </div>
 
       {!readOnly ? (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-ink-soft">Arrows move · Enter confirms · X rejects</p>
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 max-sm:sticky max-sm:bottom-0 max-sm:-mx-4 max-sm:border-t max-sm:border-line max-sm:bg-paper max-sm:px-4 max-sm:py-2">
+          <p className="text-sm text-ink-soft max-sm:hidden">Arrows move · Enter confirms · X rejects</p>
+          <div className="flex items-center gap-3 max-sm:w-full max-sm:justify-end">
             {commitError ? (
               <p role="alert" className="text-sm text-down">
                 {commitError}
