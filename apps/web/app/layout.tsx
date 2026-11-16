@@ -21,6 +21,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/" className="no-underline underline-offset-4 hover:underline">
                 Collection
               </Link>
+              <Link href="/binders" className="no-underline underline-offset-4 hover:underline">
+                Binders
+              </Link>
               <Link href="/scans" className="no-underline underline-offset-4 hover:underline">
                 Scans
               </Link>
