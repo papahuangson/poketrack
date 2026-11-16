@@ -102,3 +102,12 @@ test("request uses the image URL and forces the tool", async () => {
   const content = params.messages[0]?.content
   expect(Array.isArray(content) && content.some((b) => b.type === "image" && b.source.type === "url" && b.source.url === opts.imageUrl)).toBe(true)
 })
+
+test("an inline photo is sent as base64 instead of a link", async () => {
+  const c = client(fixture("read-full"))
+  await readPage(c, { model: "claude-test", retryDelayMs: 0, image: { type: "base64", mediaType: "image/jpeg", data: "QUJD" } })
+  const params = c.create.mock.calls[0]?.[0] as MessageCreateParamsNonStreaming
+  const content = params.messages[0]?.content
+  const image = Array.isArray(content) ? content.find((b) => b.type === "image") : undefined
+  expect(image).toMatchObject({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: "QUJD" } })
+})

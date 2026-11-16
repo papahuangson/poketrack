@@ -154,3 +154,8 @@ test("an unrecognized pocket rejected by mistake can be checked again and given 
   await userEvent.click(within(pocketEl(6)).getByRole("button", { name: "Check again" }))
   await waitFor(() => expect(updateSlotAction).toHaveBeenCalledWith(106, { decision: "pending" }))
 })
+
+test("pocket crops load the photo through the app, not the private Blob link", () => {
+  render(<ReviewGrid review={makeReview()} />)
+  expect(screen.getByRole("img", { name: "Your photo of pocket 1" })).toHaveAttribute("src", "/api/scans/7/photo")
+})

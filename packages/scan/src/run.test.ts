@@ -144,3 +144,23 @@ test("a defaulted claim takes the typed-in copy's condition", async () => {
   expect(results[1]).toMatchObject({ claimManual: true, condition: "LP" })
   expect(results[0]?.condition).toBe("NM")
 })
+
+test("loads the photo through loadImage and sends it inline", async () => {
+  const c = client(page)
+  const loadImage = vi.fn(async () => ({ mediaType: "image/jpeg" as const, data: "QUJD" }))
+  const { status } = await runScan(db, c, input, { ...opts, loadImage })
+  expect(status).toBe("ready")
+  expect(loadImage).toHaveBeenCalledWith(input.imageUrl)
+  const params = (c.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as { messages: { content: { type: string; source?: { type: string } }[] }[] }
+  expect(params.messages[0]?.content.find((b) => b.type === "image")?.source?.type).toBe("base64")
+})
+
+test("a photo that can't be loaded fails the scan", async () => {
+  const loadImage = vi.fn(async () => {
+    throw new Error("403")
+  })
+  const { scanId, status } = await runScan(db, client(page), input, { ...opts, loadImage })
+  expect(status).toBe("failed")
+  const [scan] = await db.select().from(scans).where(eq(scans.id, scanId))
+  expect(scan?.error).toMatch(/couldn't load the photo/i)
+})

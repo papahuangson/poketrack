@@ -9,7 +9,7 @@ vi.mock("@/lib/prepare-image", async (original) => ({
   prepareImage: (...a: unknown[]) => prepareImage(...a),
 }))
 const upload = vi.fn()
-vi.mock("@vercel/blob/client", () => ({ upload: (...a: unknown[]) => upload(...a) }))
+vi.mock("@vercel/blob/client", () => ({ uploadPresigned: (...a: unknown[]) => upload(...a) }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 const { CaptureForm } = await import("./capture-form")
@@ -49,7 +49,7 @@ test("submitting without a photo asks for one", async () => {
 
 test("a server error page instead of JSON shows a retry message", async () => {
   prepareImage.mockResolvedValue({ blob: new Blob(["x"]), width: 2000, height: 1500 })
-  upload.mockResolvedValue({ url: "https://abc.public.blob.vercel-storage.com/scans/page-x.jpg" })
+  upload.mockResolvedValue({ url: "https://abc.private.blob.vercel-storage.com/scans/page-x.jpg" })
   vi.stubGlobal("fetch", vi.fn(async () => new Response("<html>An error occurred</html>", { status: 504 })))
   render(<CaptureForm binders={binders} initialBinder="Main" lookupPage={async () => null} />)
   await userEvent.upload(screen.getByLabelText("Photo of the page"), new File(["x"], "p.jpg", { type: "image/jpeg" }))
@@ -57,5 +57,17 @@ test("a server error page instead of JSON shows a retry message", async () => {
   const alert = await screen.findByRole("alert")
   expect(alert).toHaveTextContent("Couldn't read that photo. Try again.")
   expect(within(alert).getByRole("button", { name: "Try again" })).toBeInTheDocument()
+  vi.unstubAllGlobals()
+})
+
+test("the photo is uploaded privately through the presigned route", async () => {
+  prepareImage.mockResolvedValue({ blob: new Blob(["x"]), width: 2000, height: 1500 })
+  upload.mockReset().mockResolvedValue({ url: "https://abc.private.blob.vercel-storage.com/scans/page-x.jpg" })
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ scanId: 3 }, { status: 201 })))
+  render(<CaptureForm binders={binders} initialBinder="Main" lookupPage={async () => null} />)
+  await userEvent.upload(screen.getByLabelText("Photo of the page"), new File(["x"], "p.jpg", { type: "image/jpeg" }))
+  await userEvent.click(screen.getByRole("button", { name: "Scan page" }))
+  await waitFor(() => expect(upload).toHaveBeenCalled())
+  expect(upload.mock.calls[0]?.[2]).toMatchObject({ access: "private", handleUploadUrl: "/api/blob/upload", contentType: "image/jpeg" })
   vi.unstubAllGlobals()
 })

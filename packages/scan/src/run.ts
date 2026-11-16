@@ -3,13 +3,15 @@ import { ValidationError } from "@poketrack/db/errors"
 import { claimDefaults } from "./claim"
 import { matchSlot, proposeVariant } from "./match"
 import { parseNumber } from "./parse"
-import { PROMPT_VERSION, readPage, ReadError, type ModelClient } from "./read"
+import { PROMPT_VERSION, readPage, ReadError, type ImageSource, type InlineImage, type ModelClient } from "./read"
 
 type NewScan = { imageUrl: string; width: number; height: number; binder: string; page: number }
 type RunOptions = {
   model: string
   defaultVariant: (cardVariants: string[]) => Promise<string>
   retryDelayMs?: number
+  /** Loads a private photo so it can be sent inline. Without it, the model fetches imageUrl itself. */
+  loadImage?: (url: string) => Promise<InlineImage>
 }
 
 const AUTO_CONFIRM = 0.9
@@ -57,7 +59,15 @@ async function runScan(db: Db, client: ModelClient, raw: NewScan, opts: RunOptio
   if (!scan) throw new Error("Insert returned no scan")
 
   try {
-    const slots = await readPage(client, { imageUrl: input.imageUrl, model: opts.model, retryDelayMs: opts.retryDelayMs })
+    let image: ImageSource = { type: "url", url: input.imageUrl }
+    if (opts.loadImage) {
+      try {
+        image = { type: "base64", ...(await opts.loadImage(input.imageUrl)) }
+      } catch (error) {
+        throw new ReadError(`Couldn't load the photo: ${error instanceof Error ? error.message : String(error)}`, { cause: error })
+      }
+    }
+    const slots = await readPage(client, { image, model: opts.model, retryDelayMs: opts.retryDelayMs })
     const matches = await Promise.all(slots.map((s) => (s.empty ? null : matchSlot(db, s))))
 
     const chosenIds = [...new Set(matches.flatMap((m) => (m?.candidates[0] ? [m.candidates[0].cardId] : [])))]

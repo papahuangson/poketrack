@@ -3,21 +3,10 @@ import { defaultVariant } from "@/lib/collection"
 import { getDb } from "@/lib/db"
 import { ValidationError } from "@/lib/errors"
 import { getModelClient, getModelName } from "@/lib/model"
+import { isOwnPrivateBlob, loadPrivateImage } from "@/lib/private-blob"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
-
-const BLOB_HOST = /\.public\.blob\.vercel-storage\.com$/
-
-function blobUrl(value: unknown): string | null {
-  if (typeof value !== "string") return null
-  try {
-    const url = new URL(value)
-    return url.protocol === "https:" && BLOB_HOST.test(url.hostname) ? url.toString() : null
-  } catch {
-    return null
-  }
-}
 
 const bad = (field: string, message: string) => Response.json({ field, message }, { status: 400 })
 
@@ -28,8 +17,8 @@ export async function POST(request: Request): Promise<Response> {
   } catch {
     return bad("body", "The request was not valid JSON.")
   }
-  const imageUrl = blobUrl(body.imageUrl)
-  if (!imageUrl) return bad("imageUrl", "The photo upload is missing.")
+  if (!isOwnPrivateBlob(body.imageUrl)) return bad("imageUrl", "The photo upload is missing.")
+  const imageUrl = new URL(body.imageUrl as string).toString()
 
   const db = getDb()
   try {
@@ -43,7 +32,11 @@ export async function POST(request: Request): Promise<Response> {
         binder: typeof body.binder === "string" ? body.binder.trim() : "",
         page: Number(body.page),
       },
-      { model: getModelName(), defaultVariant: (variants) => defaultVariant(db, variants) },
+      {
+        model: getModelName(),
+        defaultVariant: (variants) => defaultVariant(db, variants),
+        loadImage: (url) => loadPrivateImage(url),
+      },
     )
     if (status === "failed") {
       return Response.json({ scanId, message: "We couldn't read that photo. Try again, or retake it with less glare." }, { status: 502 })

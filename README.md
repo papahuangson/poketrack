@@ -54,7 +54,7 @@ Use Neon's direct connection string for `pnpm db:migrate` and the pooled one for
    - `ANTHROPIC_API_KEY`: reads scan photos.
    - `ANTHROPIC_MODEL` (optional): the model for scans. Defaults to `claude-sonnet-5-5`.
    Set them for both Production and Preview. If the passcode or secret is missing, the app shows only the login page.
-4. In the project's **Storage** tab, create a **Blob** store and connect it to the project. This sets `BLOB_READ_WRITE_TOKEN`, which scan photo uploads need.
+4. In the project's **Storage** tab, create a **private** Blob store and connect it to Production (and Preview). Connecting sets `BLOB_STORE_ID` and `BLOB_WEBHOOK_PUBLIC_KEY`; the app signs in to the store automatically on Vercel, so there is no token to copy. Scan photos stay private: Claude gets each photo from the server, and the review page shows it through the app behind the passcode. Redeploy after connecting the store so the deployment picks up the new variables.
 5. Run `pnpm db:migrate` against the Neon `main` branch so the scan tables exist, then deploy.
 6. Open the production address in a private window. You should land on the passcode page, and the passcode should open the collection. Once that works, turn **off** Deployment Protection for Production so your phone can reach the app without a Vercel sign-in. Preview deployments can keep it on.
 7. After the first deploy, run `vercel crons run /api/cron/nightly` and confirm a row appears on the Settings page (or that the NAS already ran that night).

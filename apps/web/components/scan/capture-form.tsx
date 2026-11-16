@@ -8,7 +8,7 @@ import {
   ComboboxLabel,
   ComboboxList,
 } from "@ui-sdk/react/combobox"
-import { upload } from "@vercel/blob/client"
+import { uploadPresigned } from "@vercel/blob/client"
 import { useRouter } from "next/navigation"
 import { useEffect, useState, type FormEvent } from "react"
 import { prepareImage, UnreadableImageError } from "@/lib/prepare-image"
@@ -63,8 +63,8 @@ function CaptureForm({ binders, initialBinder, lookupPage }: Props) {
       if (!photo) {
         if (!file) throw new Error("Take a photo of the page first.")
         const prepared = await prepareImage(file)
-        const blob = await upload("scans/page.jpg", prepared.blob, {
-          access: "public",
+        const blob = await uploadPresigned("scans/page.jpg", prepared.blob, {
+          access: "private",
           handleUploadUrl: "/api/blob/upload",
           contentType: "image/jpeg",
         })

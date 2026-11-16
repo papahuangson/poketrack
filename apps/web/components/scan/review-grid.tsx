@@ -24,7 +24,7 @@ function ReviewGrid({ review }: { review: Review }) {
   const refs = useRef<(HTMLElement | null)[]>([])
 
   const readOnly = review.scan.status !== "ready"
-  const photo = { imageUrl: review.scan.imageUrl, width: review.scan.width, height: review.scan.height }
+  const photo = { imageUrl: `/api/scans/${review.scan.id}/photo`, width: review.scan.width, height: review.scan.height }
   const cards = slots.filter((s) => !s.empty && s.decision === "confirmed").length
   const undecided = slots.some((s) => !s.empty && s.decision === "pending")
   const canCommit = !readOnly && !undecided && !committing

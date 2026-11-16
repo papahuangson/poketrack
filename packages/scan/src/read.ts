@@ -5,7 +5,9 @@ import type { SlotRead } from "./match"
 
 type PageSlot = SlotRead & { slot: number; empty: boolean; box: SlotBox | null }
 type ModelClient = { create(params: MessageCreateParamsNonStreaming): Promise<Message> }
-type ReadOptions = { imageUrl: string; model: string; retryDelayMs?: number }
+type InlineImage = { mediaType: "image/jpeg" | "image/png" | "image/webp"; data: string }
+type ImageSource = { type: "url"; url: string } | ({ type: "base64" } & InlineImage)
+type ReadOptions = { model: string; retryDelayMs?: number } & ({ imageUrl: string; image?: never } | { image: ImageSource; imageUrl?: never })
 
 const PROMPT_VERSION = "p2-v1"
 const SLOT_COUNT = 9
@@ -119,6 +121,12 @@ const retryable = (error: unknown) =>
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+function imageBlock(image: ImageSource) {
+  return image.type === "url"
+    ? ({ type: "url", url: image.url } as const)
+    : ({ type: "base64", media_type: image.mediaType, data: image.data } as const)
+}
+
 async function readPage(client: ModelClient, opts: ReadOptions): Promise<PageSlot[]> {
   const params: MessageCreateParamsNonStreaming = {
     model: opts.model,
@@ -129,7 +137,7 @@ async function readPage(client: ModelClient, opts: ReadOptions): Promise<PageSlo
       {
         role: "user",
         content: [
-          { type: "image", source: { type: "url", url: opts.imageUrl } },
+          { type: "image", source: imageBlock(opts.image ?? { type: "url", url: opts.imageUrl! }) },
           { type: "text", text: PROMPT },
         ],
       },
@@ -154,4 +162,4 @@ async function readPage(client: ModelClient, opts: ReadOptions): Promise<PageSlo
 }
 
 export { normalizeSlots, PROMPT_VERSION, readPage, ReadError }
-export type { ModelClient, PageSlot, ReadOptions }
+export type { ImageSource, InlineImage, ModelClient, PageSlot, ReadOptions }
