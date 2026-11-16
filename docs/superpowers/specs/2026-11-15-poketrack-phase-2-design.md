@@ -12,6 +12,8 @@ HB's cards live in 9-pocket binders. Typing each one into the Combobox is slow, 
 
 For now he plans to scan just a few pages, so the flow is one page at a time: photo, then review, then add.
 
+**A scan is the record of a binder page.** It is not just "add these cards". Rescanning a page replaces what that page's earlier scan put in the collection, so retaking a photo or rearranging a page never double-counts. Cards HB already typed in by hand are matched up with the scanned ones instead of being counted twice (HB chose this).
+
 **Done when:** a full binder page (9 cards) goes in with 2 or fewer corrections.
 
 ## Goals
@@ -21,6 +23,8 @@ For now he plans to scan just a few pages, so the flow is one page at a time: ph
 3. Match each pocket to a catalog card (TCGdex mirror) using set code, number, printed total and name.
 4. Review on a 3×3 grid: confirm, correct or reject each pocket, set variant and condition, then add.
 5. Keep every read and every decision in `scan_results` so accuracy can be measured.
+6. Rescanning a page replaces that page's earlier contribution to the collection.
+7. Cards already entered by hand without a binder are claimed by the scan instead of duplicated.
 
 ## Non-goals (Phase 2)
 
@@ -35,6 +39,7 @@ For now he plans to scan just a few pages, so the flow is one page at a time: ph
 - A card that gets added without HB confirming it.
 - A wrong card shown as a confident match. Low-confidence pockets must look different and must not start checked.
 - Losing a photo or its reads when the add fails. The scan stays reviewable.
+- Counts that drift: a rescanned page, or a card that was both typed in and scanned, must never end up counted twice.
 - Exposing the Anthropic key to the browser.
 
 ## Constraints
@@ -44,6 +49,7 @@ For now he plans to scan just a few pages, so the flow is one page at a time: ph
   - Card `number` is the bare `localId` (for example `199`), and `printed_total` comes from `cardCount.official`.
   - `sets.ptcgo_code` is TCGdex's `abbreviation.official`, or `tcgOnline` when that is missing. It can be null on older sets.
   - Variants are only `normal`, `holofoil` and `reverseHolofoil`. There is no 1st edition.
+- **One vision call per page.** HB fixed this for Phase 2. A close-up second pass is a TODO (see Later).
 - **Vercel function duration.** The scan request does one vision call plus a few queries, so give the route a `maxDuration` of 60 s **(call)**.
 - **Phone access.** Deployment Protection would require a Vercel sign-in on the phone. Phase 2 replaces it with one shared passcode (see Access) **(call)**.
 
@@ -75,10 +81,12 @@ Two new tables:
 
 | Table | Fields | Notes |
 |---|---|---|
-| `scans` | `id`, `image_url`, `image_width`, `image_height`, `binder` (nullable), `page` (nullable int), `status` (`reading` / `ready` / `failed` / `committed`), `error`, `model`, `created_at`, `committed_at` | `binder` and `page` are optional labels entered on capture. `binder` is copied onto the collection rows **(call)**. |
-| `scan_results` | `id`, `scan_id`, `slot` (1–9, row by row from the top left), `empty` bool, `read_name`, `read_number`, `read_printed_total`, `read_set_code`, `read_cues` jsonb (`holo`, `reverse`, `first_edition`), `confidence` (0–1), `box` jsonb (`x`, `y`, `w`, `h` as fractions of the image), `candidates` jsonb (up to 3 `{card_id, score, via}`), `chosen_card_id`, `variant`, `condition`, `decision` (`pending` / `confirmed` / `rejected`), `collection_item_id` | Unique (`scan_id`, `slot`). |
+| `scans` | `id`, `image_url`, `image_width`, `image_height`, `binder` (required), `page` (required int), `status` (`reading` / `ready` / `failed` / `committed` / `superseded`), `error`, `model`, `prompt_version`, `created_at`, `committed_at` | `binder` + `page` identify the physical page. At most one `committed` scan per (`binder`, `page`), enforced by a partial unique index **(call)**. `binder` is written onto the collection rows, so lots are per binder **(call)**. |
+| `scan_results` | `id`, `scan_id`, `slot` (1–9, row by row from the top left), `empty` bool, `read_name`, `read_number`, `read_printed_total`, `read_set_code`, `read_cues` jsonb (`holo`, `reverse`, `first_edition`), `confidence` (0–1), `box` jsonb (`x`, `y`, `w`, `h` as fractions of the image), `candidates` jsonb (up to 3 `{card_id, score, via}`), `chosen_card_id`, `variant`, `condition`, `decision` (`pending` / `confirmed` / `rejected`), `claim_manual` bool, `collection_item_id`, `claimed_from_item_id` | Unique (`scan_id`, `slot`). |
 
 - **Link to the collection.** The parent spec put `scan_result_id` on `collection_items`. But Phase 1 merges matching lots into one row by bumping quantity, so a single row can come from several scans. The link goes the other way instead: `scan_results.collection_item_id` **(call)**. `collection_items` gets no new column.
+- **What a page contributes.** Each confirmed pocket is worth exactly one copy in its `collection_item_id` lot. A page's contribution is the set of confirmed pockets of its `committed` scan. That is enough to undo it on rescan without a separate ledger table **(call)**.
+- **Binder names** are picked from existing binders (distinct `scans.binder`, then `collection_items.binder`) or typed new. They are matched case-insensitively and trimmed, so "main" and "Main " are the same binder **(call)**.
 - **Accuracy.** `candidates[0]` versus `chosen_card_id` is the record of whether the first guess was right. "Corrections" for the done-when count are confirmed pockets where they differ, plus non-empty pockets HB rejected or had to search for by hand.
 
 ## Access
@@ -93,7 +101,11 @@ Replace Deployment Protection with a shared passcode **(call)**:
 
 ### 1. Capture (`/scan`)
 
-- Fields: a file input (`accept="image/*" capture="environment"`), optional binder (text, defaults to the last one used), and optional page number.
+- Fields:
+  - a file input (`accept="image/*" capture="environment"`)
+  - binder, required: a ui-sdk Combobox over existing binders that can create a new one, defaulting to the last one used
+  - page number, required, defaulting to the last page + 1
+- If that binder and page already has a committed scan, the form says "Replaces the scan from Nov 15 (8 cards)" before upload. It is a notice, not a blocker.
 - In the browser, the photo is shrunk to 2000 px on the long edge and re-encoded as JPEG at about 0.85 quality, with EXIF orientation applied. It then goes to Vercel Blob as a client upload (`@vercel/blob/client`), so the photo never passes through a function body **(call)**.
 - Then `POST /api/scans` with `{ imageUrl, width, height, binder, page }`.
 - The page shows a spinner with "Reading 9 pockets…" until the response redirects to `/scans/[id]`.
@@ -156,22 +168,38 @@ Arrows move · Enter confirms · X rejects          [Add 8 cards]
 - Per pocket: a variant Select (the card's variants), a condition Select (default NM), and a reject action. Empty pockets show "(empty)" and are skipped.
 - Keyboard follows the parent spec: arrow keys move between pockets, Enter confirms, X rejects, and Tab reaches the Combobox and Selects. Grid focus uses ui-sdk list and selection behaviors.
 - Every choice saves to `scan_results` as it happens (a server action per change), so a reload or a closed tab loses nothing **(call)**.
-- **Add N cards** is enabled when no non-empty pocket is pending.
+- **Already in the collection.** Each confirmed pocket shows what HB already owns of that card and variant:
+  - **A hand-entered lot with no binder:** a "Typed in earlier, use that copy" toggle, on by default **(call)**. When on, the commit moves one copy out of that lot instead of adding a new one (`claim_manual`). A lot with quantity 3 can be claimed by up to 3 pockets across scans. Once it reaches 0, the toggle no longer appears.
+  - **The same card on another binder page:** an info note only, "Also in Main · page 2". Owning two copies is normal.
+- **Rescan view.** When this scan replaces an earlier one, the header shows the change compared with the earlier scan: "+2 new, −1 removed, 6 unchanged". Removed cards are listed so HB can see what will leave the collection.
+- **Add N cards** is enabled when no non-empty pocket is pending. On a rescan, the button reads **Replace page**.
 - On a phone the grid stays 3×3 with smaller tiles. Tapping a pocket opens it full-width to edit.
 
 ### 6. Commit
 
-- One transaction. Each confirmed pocket goes through Phase 1's `addItem` with `source = 'scan'`, the scan's `binder`, and the chosen variant and condition. That means matching lots merge and bump quantity, as with manual adds.
-- The resulting row id is written to `scan_results.collection_item_id`. The scan becomes `committed`.
+One transaction that locks the (`binder`, `page`) pair **(call)**:
+
+1. **Undo the previous page scan, if there is one.**
+   - For each confirmed pocket of the old `committed` scan, lower its `collection_item_id` lot by 1, never below 0 **(call)**, and delete the lot when it reaches 0.
+   - A copy that pocket had claimed from a manual lot is not given back, because the scan has since become the record of it **(call)**.
+   - The old scan becomes `superseded`.
+2. **Apply the new scan.** For each confirmed pocket:
+   - If `claim_manual` is on, lower the hand-entered lot by 1 (deleting it at 0) and record `claimed_from_item_id`. If that lot had a `paid_usd`, it carries over to the new copy when the target lot has none **(call)**.
+   - Add one copy through Phase 1's `addItem` with `source = 'scan'`, the scan's `binder`, and the chosen variant and condition. Matching lots in the same binder merge and bump quantity.
+   - Write the resulting row id to `collection_item_id`.
+3. Mark the scan `committed`, with `committed_at` set.
+
+After commit:
 - After the transaction, Phase 1's price-on-add runs for each card that has no snapshot today. A price failure doesn't undo the add.
 - Rejected pockets stay in `scan_results`.
-- A committed scan opens read-only, so it can't be added twice.
+- A committed or superseded scan opens read-only, so it can't be applied twice.
+- Editing a scanned lot by hand later (quantity, condition) is allowed. A later rescan undoes only the pocket copies, clamped at 0, so hand edits can lower what a rescan removes but never make a count negative.
 - Then go to the collection screen, with a note like "Added 8 cards from Main · page 3".
 
 ## Other screens
 
 - **Collection header:** a "Scan a page" link next to the add Combobox.
-- **`/scans`:** a list of past scans (date, binder and page, status, how many were added). It also shows a simple accuracy line: first-guess right / non-empty pockets, over all committed scans **(call)**.
+- **`/scans`:** past scans grouped by binder and page, with the current scan first and superseded ones under it (date, status, how many cards). It also shows a simple accuracy line: first-guess right / non-empty pockets, over all committed scans **(call)**.
 
 ## Configuration
 
@@ -197,12 +225,29 @@ HB supplies: an Anthropic API key, a Blob store on the Vercel project, and a pas
   - Variant proposal from the cues and the card's variants.
 - **Read:** the response is parsed against the schema using saved model outputs (fixtures). A malformed output fails the scan cleanly. The live API is never called in tests.
 - **Commit:**
-  - Merges into an existing lot.
+  - Merges into an existing lot in the same binder.
   - Writes `collection_item_id`.
-  - Refuses a second commit.
+  - Refuses a second commit of the same scan.
   - Leaves rejected pockets alone.
+- **Rescan:**
+  - Replacing a page with the identical cards leaves every count unchanged.
+  - A removed card loses one copy, and its lot is deleted at 0.
+  - A moved card (page 2 → page 3) nets out.
+  - The old scan becomes `superseded`.
+  - A hand-lowered lot clamps at 0.
+  - Two commits racing for the same page: one wins, the other fails cleanly.
+- **Claim:**
+  - Moves one copy from a binder-less manual lot and deletes it at 0.
+  - Carries `paid_usd` over.
+  - Stops offering the claim once the manual lot is used up.
+  - A claimed copy is not restored when its page is later rescanned without it.
 - **Access:** middleware lets `/login` and the cron route through and blocks everything else without the cookie.
-- **Real-photo check (manual, before calling Phase 2 done):** scan 3 real pages, including one with holos under sleeves, and record the corrections from the `/scans` accuracy line.
+- **Real-photo check (manual, before calling Phase 2 done):** scan 3 real pages, including one with holos under sleeves. Each page must get 2 or fewer corrections **(call)**. Record the results from the `/scans` accuracy line.
+
+## Later (TODO)
+
+- **Close-up second pass (HB asked for this as a TODO).** The API scales the photo down, so each card is about 500 px wide and small print like "199/165" can be hard to read under sleeves. If the real-photo check misses its target, add a second call that re-reads only the low-confidence pockets from server-side crops of the full-resolution upload. This means keeping the original upload, adding an image library to `packages/scan`, and rechecking `maxDuration` and cost per page. `scans.prompt_version` and `model` already let results be compared before and after.
+- Approach B (many pages in a row) and approach C (image matching), as above.
 
 ## Left to the builder
 
