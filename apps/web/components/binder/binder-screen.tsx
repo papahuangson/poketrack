@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { BinderPicker } from "@/components/binder/binder-picker"
 import { PageGrid } from "@/components/binder/page-grid"
 import { Pager } from "@/components/binder/pager"
+import { SearchBox } from "@/components/binder/search-box"
 import { UnplacedStrip } from "@/components/binder/unplaced-strip"
 import { binderHref } from "@/lib/binder-params"
 import type { BinderPage, CardDetail, CardRef, OwnedHit, UnplacedLot } from "@/lib/binder-view"
@@ -25,7 +26,7 @@ const hashLot = () => {
   return match ? Number(match[1]) : null
 }
 
-function BinderScreen({ binders, page, unplaced, highlightSlot }: Props) {
+function BinderScreen({ binders, page, unplaced, highlightSlot, search }: Props) {
   const router = useRouter()
   const [highlightLot, setHighlightLot] = useState<number | null>(null)
 
@@ -44,6 +45,9 @@ function BinderScreen({ binders, page, unplaced, highlightSlot }: Props) {
       <div className="flex flex-wrap items-end gap-3">
         <div className="w-44">
           <BinderPicker binders={binders} current={page.binder} />
+        </div>
+        <div className="min-w-56 flex-1">
+          <SearchBox search={search} current={{ binder: page.binder, page: page.page }} onPickUnplaced={setHighlightLot} />
         </div>
       </div>
       <div className="flex flex-col items-center gap-3">
