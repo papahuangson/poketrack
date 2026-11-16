@@ -1,0 +1,137 @@
+{
+ "slots": [
+  {
+   "slot": 1,
+   "empty": false,
+   "name": "Pikachu",
+   "number_as_printed": "058/102",
+   "set_code": null,
+   "cues": {
+    "holo": false,
+    "reverse": false,
+    "first_edition": false
+   },
+   "confidence": 0.95,
+   "box": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 0.33,
+    "h": 0.33
+   }
+  },
+  {
+   "slot": 2,
+   "empty": false,
+   "name": "Pikachu",
+   "number_as_printed": "058/102",
+   "set_code": null,
+   "cues": {
+    "holo": false,
+    "reverse": false,
+    "first_edition": false
+   },
+   "confidence": 0.95,
+   "box": {
+    "x": 0.3333,
+    "y": 0.0,
+    "w": 0.33,
+    "h": 0.33
+   }
+  },
+  {
+   "slot": 3,
+   "empty": false,
+   "name": "Pikachu",
+   "number_as_printed": "058/102",
+   "set_code": null,
+   "cues": {
+    "holo": false,
+    "reverse": false,
+    "first_edition": false
+   },
+   "confidence": 0.95,
+   "box": {
+    "x": 0.6667,
+    "y": 0.0,
+    "w": 0.33,
+    "h": 0.33
+   }
+  },
+  {
+   "slot": 4,
+   "empty": false,
+   "name": "Pikachu",
+   "number_as_printed": "058/102",
+   "set_code": null,
+   "cues": {
+    "holo": false,
+    "reverse": false,
+    "first_edition": false
+   },
+   "confidence": 0.95,
+   "box": {
+    "x": 0.0,
+    "y": 0.3333,
+    "w": 0.33,
+    "h": 0.33
+   }
+  },
+  {
+   "slot": 5,
+   "empty": false,
+   "name": "Pikachu",
+   "number_as_printed": "058/102",
+   "set_code": null,
+   "cues": {
+    "holo": false,
+    "reverse": false,
+    "first_edition": false
+   },
+   "confidence": 0.95,
+   "box": {
+    "x": 0.3333,
+    "y": 0.3333,
+    "w": 0.33,
+    "h": 0.33
+   }
+  },
+  {
+   "slot": 6,
+   "empty": false,
+   "name": "Pikachu",
+   "number_as_printed": "058/102",
+   "set_code": null,
+   "cues": {
+    "holo": false,
+    "reverse": false,
+    "first_edition": false
+   },
+   "confidence": 0.95,
+   "box": {
+    "x": 0.6667,
+    "y": 0.3333,
+    "w": 0.33,
+    "h": 0.33
+   }
+  },
+  {
+   "slot": 7,
+   "empty": false,
+   "name": "Pikachu",
+   "number_as_printed": "058/102",
+   "set_code": null,
+   "cues": {
+    "holo": false,
+    "reverse": false,
+    "first_edition": false
+   },
+   "confidence": 0.95,
+   "box": {
+    "x": 0.0,
+    "y": 0.6667,
+    "w": 0.33,
+    "h": 0.33
+   }
+  }
+ ]
+}

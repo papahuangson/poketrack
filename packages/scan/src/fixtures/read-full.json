@@ -1,0 +1,175 @@
+{
+ "slots": [
+  {
+   "slot": 1,
+   "empty": false,
+   "name": "Charizard ex",
+   "number_as_printed": "199/165",
+   "set_code": "MEW",
+   "cues": {
+    "holo": true,
+    "reverse": false,
+    "first_edition": false
+   },
+   "confidence": 0.95,
+   "box": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 0.33,
+    "h": 0.33
+   }
+  },
+  {
+   "slot": 2,
+   "empty": false,
+   "name": "Pikachu",
+   "number_as_printed": "058/102",
+   "set_code": null,
+   "cues": {
+    "holo": false,
+    "reverse": false,
+    "first_edition": false
+   },
+   "confidence": 0.95,
+   "box": {
+    "x": 0.3333,
+    "y": 0.0,
+    "w": 0.33,
+    "h": 0.33
+   }
+  },
+  {
+   "slot": 3,
+   "empty": false,
+   "name": "Mew ex",
+   "number_as_printed": "151/165",
+   "set_code": "MEW",
+   "cues": {
+    "holo": false,
+    "reverse": false,
+    "first_edition": false
+   },
+   "confidence": 0.6,
+   "box": {
+    "x": 0.6667,
+    "y": 0.0,
+    "w": 0.33,
+    "h": 0.33
+   }
+  },
+  {
+   "slot": 4,
+   "empty": false,
+   "name": "Bulbasaur",
+   "number_as_printed": "001/165",
+   "set_code": "MEW",
+   "cues": {
+    "holo": false,
+    "reverse": false,
+    "first_edition": false
+   },
+   "confidence": 0.95,
+   "box": {
+    "x": 0.0,
+    "y": 0.3333,
+    "w": 0.33,
+    "h": 0.33
+   }
+  },
+  {
+   "slot": 5,
+   "empty": false,
+   "name": "Ivysaur",
+   "number_as_printed": "002/165",
+   "set_code": "MEW",
+   "cues": {
+    "holo": false,
+    "reverse": false,
+    "first_edition": false
+   },
+   "confidence": 0.95,
+   "box": {
+    "x": 0.3333,
+    "y": 0.3333,
+    "w": 0.33,
+    "h": 0.33
+   }
+  },
+  {
+   "slot": 6,
+   "empty": false,
+   "name": "Venusaur ex",
+   "number_as_printed": "003/165",
+   "set_code": "MEW",
+   "cues": {
+    "holo": true,
+    "reverse": false,
+    "first_edition": false
+   },
+   "confidence": 0.95,
+   "box": {
+    "x": 0.6667,
+    "y": 0.3333,
+    "w": 0.33,
+    "h": 0.33
+   }
+  },
+  {
+   "slot": 7,
+   "empty": false,
+   "name": "Charmander",
+   "number_as_printed": "004/165",
+   "set_code": "MEW",
+   "cues": {
+    "holo": false,
+    "reverse": true,
+    "first_edition": false
+   },
+   "confidence": 0.95,
+   "box": {
+    "x": 0.0,
+    "y": 0.6667,
+    "w": 0.33,
+    "h": 0.33
+   }
+  },
+  {
+   "slot": 8,
+   "empty": false,
+   "name": "Charmeleon",
+   "number_as_printed": "005/165",
+   "set_code": "MEW",
+   "cues": {
+    "holo": false,
+    "reverse": false,
+    "first_edition": false
+   },
+   "confidence": 0.95,
+   "box": {
+    "x": 0.3333,
+    "y": 0.6667,
+    "w": 0.33,
+    "h": 0.33
+   }
+  },
+  {
+   "slot": 9,
+   "empty": false,
+   "name": "Squirtle",
+   "number_as_printed": "007/165",
+   "set_code": "MEW",
+   "cues": {
+    "holo": false,
+    "reverse": false,
+    "first_edition": false
+   },
+   "confidence": 0.95,
+   "box": {
+    "x": 0.6667,
+    "y": 0.6667,
+    "w": 0.33,
+    "h": 0.33
+   }
+  }
+ ]
+}

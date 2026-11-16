@@ -2,11 +2,14 @@
   "name": "@poketrack/scan",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "@poketrack/db": "workspace:*",
     "@poketrack/jobs": "workspace:*",
     "drizzle-orm": "^0.45.0"

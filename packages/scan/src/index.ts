@@ -1,3 +1,5 @@
 export { matchSlot, proposeVariant } from "./match"
 export type { Match, SlotRead } from "./match"
 export { parseNumber } from "./parse"
+export { normalizeSlots, PROMPT_VERSION, readPage, ReadError } from "./read"
+export type { ModelClient, PageSlot, ReadOptions } from "./read"
