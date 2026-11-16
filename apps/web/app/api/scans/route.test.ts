@@ -57,10 +57,16 @@ test("a malformed body returns 400", async () => {
 })
 
 test("a failed run returns 502 with a message and the scan id", async () => {
-  runScan.mockResolvedValue({ scanId: 8, status: "failed" })
+  runScan.mockResolvedValue({ scanId: 8, status: "failed", error: "Reading the photo failed: 401 invalid x-api-key" })
+  const logged = vi.spyOn(console, "error").mockImplementation(() => {})
   const res = await post(body)
   expect(res.status).toBe(502)
-  expect(await res.json()).toMatchObject({ scanId: 8, message: expect.stringMatching(/couldn't read/i) })
+  expect(await res.json()).toMatchObject({
+    scanId: 8,
+    message: expect.stringMatching(/couldn.t read[\s\S]*\(Reading the photo failed: 401 invalid x-api-key\)/i),
+  })
+  expect(logged).toHaveBeenCalledWith(expect.stringContaining("Scan 8 failed"), "Reading the photo failed: 401 invalid x-api-key")
+  logged.mockRestore()
 })
 
 test("the route allows 60 seconds", () => {

@@ -22,7 +22,7 @@ export async function POST(request: Request): Promise<Response> {
 
   const db = getDb()
   try {
-    const { scanId, status } = await runScan(
+    const { scanId, status, error: reason } = await runScan(
       db,
       getModelClient(),
       {
@@ -39,7 +39,12 @@ export async function POST(request: Request): Promise<Response> {
       },
     )
     if (status === "failed") {
-      return Response.json({ scanId, message: "We couldn't read that photo. Try again, or retake it with less glare." }, { status: 502 })
+      console.error(`Scan ${scanId} failed`, reason)
+      const detail = reason ? ` (${reason})` : ""
+      return Response.json(
+        { scanId, message: `We couldn't read that photo. Try again, or retake it with less glare.${detail}` },
+        { status: 502 },
+      )
     }
     return Response.json({ scanId }, { status: 201 })
   } catch (error) {

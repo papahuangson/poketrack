@@ -16,6 +16,7 @@ export default async function ScanReviewPage({ params }: { params: Promise<{ id:
     return (
       <section className="flex flex-col gap-3">
         <h1 className="font-display text-3xl font-semibold">We couldn't read that photo</h1>
+        {review.scan.error ? <p className="text-sm text-ink-soft">{review.scan.error}</p> : null}
         <p>
           <a href="/scan">Scan the page again</a>
         </p>

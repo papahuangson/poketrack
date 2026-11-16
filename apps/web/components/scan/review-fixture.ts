@@ -58,7 +58,7 @@ function makeReview(over: Partial<Review> = {}): Review {
     pocket(9, { empty: true, chosen: null, variant: null, candidates: [], decision: "pending", read: { name: null, number: null, printedTotal: null, setCode: null, cues: null } }),
   ]
   return {
-    scan: { id: 7, binder: "Main", page: 3, status: "ready", imageUrl: "https://p/x.jpg", width: 2000, height: 1500 },
+    scan: { id: 7, binder: "Main", page: 3, status: "ready", imageUrl: "https://p/x.jpg", width: 2000, height: 1500, error: null },
     slots,
     diff: null,
     canCommit: false,

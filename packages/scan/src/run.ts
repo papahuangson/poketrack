@@ -42,7 +42,7 @@ async function hasManualLot(db: Db, cardId: string, variant: string): Promise<bo
   return lot !== undefined
 }
 
-async function runScan(db: Db, client: ModelClient, raw: NewScan, opts: RunOptions): Promise<{ scanId: number; status: "ready" | "failed" }> {
+async function runScan(db: Db, client: ModelClient, raw: NewScan, opts: RunOptions): Promise<{ scanId: number; status: "ready" | "failed"; error?: string }> {
   const input = checkInput(raw)
   const [scan] = await db
     .insert(scans)
@@ -124,7 +124,7 @@ async function runScan(db: Db, client: ModelClient, raw: NewScan, opts: RunOptio
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     await db.update(scans).set({ status: "failed", error: message }).where(eq(scans.id, scan.id))
-    if (error instanceof ReadError) return { scanId: scan.id, status: "failed" }
+    if (error instanceof ReadError) return { scanId: scan.id, status: "failed", error: message }
     throw error
   }
 }

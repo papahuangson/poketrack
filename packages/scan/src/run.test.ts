@@ -98,8 +98,9 @@ test("claimManual starts true when a binder-less lot of the chosen card and vari
 
 test("ReadError marks scan failed with the error text and writes no results", async () => {
   const failing: ModelClient = { create: vi.fn().mockResolvedValue({ content: [] } as unknown as Message) }
-  const { scanId, status } = await runScan(db, failing, input, opts)
+  const { scanId, status, error } = await runScan(db, failing, input, opts)
   expect(status).toBe("failed")
+  expect(error).toMatch(/did not report/)
   const [scan] = await db.select().from(scans).where(eq(scans.id, scanId))
   expect(scan?.status).toBe("failed")
   expect(scan?.error).toMatch(/did not report/)

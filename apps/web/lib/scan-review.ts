@@ -49,7 +49,7 @@ type RescanDiff = {
 } | null
 
 type Review = {
-  scan: { id: number; binder: string; page: number; status: ScanStatus; imageUrl: string; width: number; height: number }
+  scan: { id: number; binder: string; page: number; status: ScanStatus; imageUrl: string; width: number; height: number; error: string | null }
   slots: ReviewSlot[]
   diff: RescanDiff
   canCommit: boolean
@@ -235,6 +235,7 @@ async function loadReview(db: Db, scanId: number): Promise<Review | null> {
       imageUrl: scan.imageUrl,
       width: scan.imageWidth,
       height: scan.imageHeight,
+      error: scan.error,
     },
     slots,
     diff: await rescanDiff(db, scan, currentIds),
