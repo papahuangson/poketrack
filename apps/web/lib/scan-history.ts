@@ -1,4 +1,5 @@
 import { sql, type Db, type ScanStatus } from "@poketrack/db"
+import { expireStaleReads } from "./scan-expiry"
 
 type ScanSummary = { id: number; status: ScanStatus; createdAt: string; cards: number }
 type PageHistory = { binder: string; page: number; current: ScanSummary | null; older: ScanSummary[] }
@@ -9,6 +10,7 @@ async function rows<T>(db: Db, query: ReturnType<typeof sql>): Promise<T[]> {
 }
 
 async function listScanHistory(db: Db): Promise<PageHistory[]> {
+  await expireStaleReads(db)
   const found = await rows<{ id: number; binder: string; page: number; status: ScanStatus; createdAt: Date | string; cards: number }>(
     db,
     sql`select s.id, trim(s.binder) as binder, s.page, s.status, s.created_at as "createdAt",

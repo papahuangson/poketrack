@@ -1,4 +1,4 @@
-import { collectionItems, scanResults, type Db } from "@poketrack/db"
+import { collectionItems, scanResults, scans, type Db } from "@poketrack/db"
 import { createTestDb } from "@poketrack/db/testing"
 import { eq } from "drizzle-orm"
 import { beforeEach, expect, test } from "vitest"
@@ -90,4 +90,18 @@ test("firstEditionNote is set from the read cues", async () => {
 
 test("an unknown scan id returns null", async () => {
   expect(await loadReview(db, 999)).toBeNull()
+})
+
+test("a scan stuck reading for more than 90 seconds is marked failed", async () => {
+  const [stuck] = await db
+    .insert(scans)
+    .values({ imageUrl: "u", imageWidth: 1, imageHeight: 1, binder: "Main", page: 8, status: "reading", createdAt: new Date(Date.now() - 120_000) })
+    .returning()
+  const [fresh] = await db
+    .insert(scans)
+    .values({ imageUrl: "u", imageWidth: 1, imageHeight: 1, binder: "Main", page: 9, status: "reading" })
+    .returning()
+  expect((await reviewOf(stuck!.id)).scan.status).toBe("failed")
+  expect((await db.select().from(scans).where(eq(scans.id, stuck!.id)))[0]).toMatchObject({ status: "failed", error: expect.stringMatching(/took too long/) })
+  expect((await reviewOf(fresh!.id)).scan.status).toBe("reading")
 })

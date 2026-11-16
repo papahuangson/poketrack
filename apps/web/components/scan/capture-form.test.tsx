@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { expect, test, vi } from "vitest"
 
@@ -8,7 +8,8 @@ vi.mock("@/lib/prepare-image", async (original) => ({
   ...(await original<typeof import("@/lib/prepare-image")>()),
   prepareImage: (...a: unknown[]) => prepareImage(...a),
 }))
-vi.mock("@vercel/blob/client", () => ({ upload: vi.fn() }))
+const upload = vi.fn()
+vi.mock("@vercel/blob/client", () => ({ upload: (...a: unknown[]) => upload(...a) }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 const { CaptureForm } = await import("./capture-form")
@@ -44,4 +45,17 @@ test("submitting without a photo asks for one", async () => {
   render(<CaptureForm binders={binders} initialBinder="Main" lookupPage={async () => null} />)
   await userEvent.click(screen.getByRole("button", { name: "Scan page" }))
   expect(await screen.findByRole("alert")).toHaveTextContent("Take a photo of the page first.")
+})
+
+test("a server error page instead of JSON shows a retry message", async () => {
+  prepareImage.mockResolvedValue({ blob: new Blob(["x"]), width: 2000, height: 1500 })
+  upload.mockResolvedValue({ url: "https://abc.public.blob.vercel-storage.com/scans/page-x.jpg" })
+  vi.stubGlobal("fetch", vi.fn(async () => new Response("<html>An error occurred</html>", { status: 504 })))
+  render(<CaptureForm binders={binders} initialBinder="Main" lookupPage={async () => null} />)
+  await userEvent.upload(screen.getByLabelText("Photo of the page"), new File(["x"], "p.jpg", { type: "image/jpeg" }))
+  await userEvent.click(screen.getByRole("button", { name: "Scan page" }))
+  const alert = await screen.findByRole("alert")
+  expect(alert).toHaveTextContent("Couldn't read that photo. Try again.")
+  expect(within(alert).getByRole("button", { name: "Try again" })).toBeInTheDocument()
+  vi.unstubAllGlobals()
 })

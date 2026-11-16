@@ -121,3 +121,10 @@ test("confirming the last pending pocket enables the add button without a reload
   fireEvent.keyDown(pocketEl(3), { key: "Enter" })
   await waitFor(() => expect(screen.getByRole("button", { name: "Add 8 cards" })).toBeEnabled())
 })
+
+test("a scan that is still reading says so instead of 'already added'", () => {
+  const review = makeReview({ slots: [] })
+  render(<ReviewGrid review={{ ...review, scan: { ...review.scan, status: "reading" } }} />)
+  expect(screen.getByText(/still reading/i)).toBeInTheDocument()
+  expect(screen.queryByText(/already added/i)).toBeNull()
+})

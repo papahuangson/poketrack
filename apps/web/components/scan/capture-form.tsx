@@ -76,12 +76,12 @@ function CaptureForm({ binders, initialBinder, lookupPage }: Props) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ imageUrl: photo.url, width: photo.width, height: photo.height, binder: binder.trim(), page }),
       })
-      const result = (await response.json()) as { scanId?: number; message?: string }
-      if (response.ok && result.scanId) {
+      const result = (await response.json().catch(() => null)) as { scanId?: number; message?: string } | null
+      if (response.ok && result?.scanId) {
         router.push(`/scans/${result.scanId}`)
         return
       }
-      throw new Error(result.message ?? "Something went wrong. Try again.")
+      throw new Error(result?.message ?? "Couldn't read that photo. Try again.")
     } catch (caught) {
       setError(caught instanceof UnreadableImageError ? caught.message : caught instanceof Error ? caught.message : String(caught))
       setStatus("idle")

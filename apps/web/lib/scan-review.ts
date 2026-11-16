@@ -21,6 +21,7 @@ import {
 import { claimDefaults, proposeVariant } from "@poketrack/scan"
 import { defaultVariant, type CardHit } from "./collection"
 import { ValidationError } from "./errors"
+import { expireStaleReads } from "./scan-expiry"
 
 type ReviewSlot = {
   id: number
@@ -171,6 +172,7 @@ async function rescanDiff(db: Db, scan: { id: number; binder: string; page: numb
 }
 
 async function loadReview(db: Db, scanId: number): Promise<Review | null> {
+  await expireStaleReads(db)
   const [scan] = await db.select().from(scans).where(eq(scans.id, scanId))
   if (!scan) return null
   const results = await db.select().from(scanResults).where(eq(scanResults.scanId, scanId)).orderBy(scanResults.slot)

@@ -9,7 +9,7 @@ function getModelClient(): ModelClient {
   if (!client) {
     const apiKey = process.env.ANTHROPIC_API_KEY
     if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set")
-    const anthropic = new Anthropic({ apiKey, maxRetries: 0, timeout: 45_000 })
+    const anthropic = new Anthropic({ apiKey, maxRetries: 0, timeout: 25_000 })
     client = { create: (params) => anthropic.messages.create(params) }
   }
   return client

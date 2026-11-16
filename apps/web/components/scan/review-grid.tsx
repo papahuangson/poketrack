@@ -99,7 +99,11 @@ function ReviewGrid({ review }: { review: Review }) {
         </div>
       ) : null}
 
-      {readOnly ? <p className="text-sm text-ink-soft">This scan was already added. It's shown here for reference.</p> : null}
+      {review.scan.status === "committed" || review.scan.status === "superseded" ? (
+        <p className="text-sm text-ink-soft">This scan was already added. It's shown here for reference.</p>
+      ) : review.scan.status === "reading" ? (
+        <p className="text-sm text-ink-soft">We're still reading this photo. Refresh in a moment.</p>
+      ) : null}
 
       <div className="grid grid-cols-3 gap-2 sm:gap-3" aria-label="Pockets">
         {slots.map((pocket, index) => (

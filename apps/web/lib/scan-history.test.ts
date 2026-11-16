@@ -61,3 +61,9 @@ test("addedNote describes a committed scan", async () => {
   await db.delete(scanResults)
   expect(await addedNote(db, 99999)).toBeNull()
 })
+
+test("history shows a long-stuck read as failed", async () => {
+  await db.insert(scans).values({ imageUrl: "u", imageWidth: 1, imageHeight: 1, binder: "Main", page: 8, status: "reading", createdAt: new Date(Date.now() - 120_000) })
+  const [page] = await listScanHistory(db)
+  expect(page?.older[0]?.status).toBe("failed")
+})
