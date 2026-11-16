@@ -3,7 +3,7 @@ import { SESSION_COOKIE, sessionEnv, verifySession } from "./lib/session"
 
 const OPEN_PATHS = ["/login", "/api/cron/nightly"]
 
-async function proxy(request: NextRequest): Promise<NextResponse> {
+export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname, search } = request.nextUrl
   if (OPEN_PATHS.includes(pathname)) return NextResponse.next()
 
@@ -15,8 +15,7 @@ async function proxy(request: NextRequest): Promise<NextResponse> {
   return NextResponse.redirect(login)
 }
 
-const config = {
+export const config = {
   matcher: ["/((?!_next/static|_next/image|icon.svg|favicon.ico).*)"],
 }
 
-export { config, proxy }
