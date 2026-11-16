@@ -1,7 +1,7 @@
 import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@poketrack/db", "@poketrack/jobs"],
+  transpilePackages: ["@poketrack/db", "@poketrack/jobs", "@poketrack/scan"],
   serverExternalPackages: ["pg"],
   turbopack: {
     rules: {

@@ -23,6 +23,9 @@ importers:
       '@poketrack/jobs':
         specifier: workspace:*
         version: link:../../packages/jobs
+      '@poketrack/scan':
+        specifier: workspace:*
+        version: link:../../packages/scan
       '@ui-sdk/core':
         specifier: 0.1.0-beta.1
         version: 0.1.0-beta.1
@@ -122,6 +125,25 @@ importers:
       tsx:
         specifier: ^4.20.0
         version: 4.23.15
+
+  packages/scan:
+    dependencies:
+      '@poketrack/db':
+        specifier: workspace:*
+        version: link:../db
+      '@poketrack/jobs':
+        specifier: workspace:*
+        version: link:../jobs
+      drizzle-orm:
+        specifier: ^0.45.0
+        version: 0.45.4(@electric-sql/pglite@0.3.16)(@types/pg@8.23.1)(pg@8.23.1)
+    devDependencies:
+      '@electric-sql/pglite':
+        specifier: ^0.3.0
+        version: 0.3.16
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.5
 
 packages:
 
