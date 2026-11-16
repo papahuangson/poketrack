@@ -1,5 +1,6 @@
 import { and, cards, collectionItems, eq, inArray, scanResults, scans, sql, type Db } from "@poketrack/db"
 import { ValidationError } from "@poketrack/db/errors"
+import { claimDefaults } from "./claim"
 import { matchSlot, proposeVariant } from "./match"
 import { parseNumber } from "./parse"
 import { PROMPT_VERSION, readPage, ReadError, type ModelClient } from "./read"
@@ -91,13 +92,22 @@ async function runScan(db: Db, client: ModelClient, raw: NewScan, opts: RunOptio
           chosenCardId,
           variant,
           decision: chosenCardId && confidence >= AUTO_CONFIRM ? ("confirmed" as const) : ("pending" as const),
-          claimManual: chosenCardId && variant ? await hasManualLot(db, chosenCardId, variant) : false,
         }
       }),
     )
+    const claims = await claimDefaults(
+      db,
+      { binder: input.binder, page: input.page, scanId: scan.id },
+      rows.map((r) => (r.chosenCardId && r.variant && !r.empty ? { cardId: r.chosenCardId, variant: r.variant } : null)),
+    )
+    const withClaims = rows.map((r, i) => ({
+      ...r,
+      claimManual: claims[i]!.claim,
+      ...(claims[i]!.condition ? { condition: claims[i]!.condition! } : {}),
+    }))
 
     await db.transaction(async (tx) => {
-      await tx.insert(scanResults).values(rows)
+      await tx.insert(scanResults).values(withClaims)
       await tx.update(scans).set({ status: "ready" }).where(eq(scans.id, scan.id))
     })
     return { scanId: scan.id, status: "ready" }

@@ -18,7 +18,7 @@ import {
   type SlotBox,
   type SlotCues,
 } from "@poketrack/db"
-import { hasManualLot, proposeVariant } from "@poketrack/scan"
+import { claimDefaults, proposeVariant } from "@poketrack/scan"
 import { defaultVariant, type CardHit } from "./collection"
 import { ValidationError } from "./errors"
 
@@ -240,15 +240,51 @@ async function loadReview(db: Db, scanId: number): Promise<Review | null> {
   }
 }
 
+async function claimDefaultFor(
+  db: Db,
+  scan: { id: number; binder: string; page: number },
+  resultId: number,
+  key: { cardId: string; variant: string },
+): Promise<{ claim: boolean; condition: Condition | null }> {
+  const pockets = await db.select().from(scanResults).where(eq(scanResults.scanId, scan.id)).orderBy(scanResults.slot)
+  const keys = pockets.map((p) =>
+    p.id === resultId ? key : !p.empty && p.decision !== "rejected" && p.chosenCardId && p.variant ? { cardId: p.chosenCardId, variant: p.variant } : null,
+  )
+  const defaults = await claimDefaults(db, { binder: scan.binder, page: scan.page, scanId: scan.id }, keys)
+  return defaults[pockets.findIndex((p) => p.id === resultId)] ?? { claim: false, condition: null }
+}
+
+async function manualCondition(db: Db, cardId: string, variant: string): Promise<Condition | null> {
+  const [lot] = await db
+    .select({ condition: collectionItems.condition })
+    .from(collectionItems)
+    .where(
+      and(
+        eq(collectionItems.cardId, cardId),
+        eq(collectionItems.variant, variant),
+        sql`coalesce(trim(${collectionItems.binder}), '') = ''`,
+        sql`${collectionItems.quantity} > 0`,
+      ),
+    )
+    .orderBy(collectionItems.id)
+    .limit(1)
+  return lot?.condition ?? null
+}
+
 async function updateSlot(db: Db, resultId: number, patch: SlotPatch): Promise<{ scanId: number }> {
   const [row] = await db
-    .select({ result: scanResults, status: scans.status })
+    .select({ result: scanResults, status: scans.status, binder: scans.binder, page: scans.page })
     .from(scanResults)
     .innerJoin(scans, eq(scans.id, scanResults.scanId))
     .where(eq(scanResults.id, resultId))
   if (!row) throw new ValidationError("scan", "That pocket was not found.")
   if (row.status !== "ready") throw new ValidationError("scan", "This scan was already added.")
   const r = row.result
+  const scanRef = { id: r.scanId, binder: row.binder, page: row.page }
+  const withClaim = async (cardId: string, v: string) => {
+    const d = await claimDefaultFor(db, scanRef, resultId, { cardId, variant: v })
+    return { claimManual: d.claim, ...(d.condition ? { condition: d.condition } : {}) }
+  }
 
   const next: Partial<typeof scanResults.$inferInsert> = {}
   let chosenId = r.chosenCardId
@@ -264,7 +300,7 @@ async function updateSlot(db: Db, resultId: number, patch: SlotPatch): Promise<{
       if (!card) throw new ValidationError("chosenCardId", "That card is not in the catalog.")
       chosenId = card.id
       variant = proposeVariant(r.readCues ?? { holo: false, reverse: false, firstEdition: false }, card.variants, await defaultVariant(db, card.variants))
-      Object.assign(next, { chosenCardId: card.id, variant, claimManual: await hasManualLot(db, card.id, variant) })
+      Object.assign(next, { chosenCardId: card.id, variant }, await withClaim(card.id, variant))
     }
   }
 
@@ -273,7 +309,15 @@ async function updateSlot(db: Db, resultId: number, patch: SlotPatch): Promise<{
     if (!card || !card.variants.includes(patch.variant)) throw new ValidationError("variant", "Choose a variant this card comes in.")
     if (patch.variant !== variant) {
       variant = patch.variant
-      Object.assign(next, { variant, claimManual: await hasManualLot(db, chosenId!, variant) })
+      Object.assign(next, { variant }, await withClaim(chosenId!, variant))
+    }
+  }
+
+  if (patch.claimManual !== undefined) {
+    next.claimManual = patch.claimManual
+    if (patch.claimManual && patch.condition === undefined && chosenId && variant) {
+      const condition = await manualCondition(db, chosenId, variant)
+      if (condition) next.condition = condition
     }
   }
 
@@ -281,8 +325,6 @@ async function updateSlot(db: Db, resultId: number, patch: SlotPatch): Promise<{
     if (!CONDITIONS.includes(patch.condition)) throw new ValidationError("condition", "Choose a condition.")
     next.condition = patch.condition
   }
-
-  if (patch.claimManual !== undefined) next.claimManual = patch.claimManual
 
   if (patch.decision !== undefined) {
     if (!DECISIONS.includes(patch.decision)) throw new ValidationError("decision", "Choose confirm or reject.")

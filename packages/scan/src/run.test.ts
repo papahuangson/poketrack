@@ -111,3 +111,36 @@ test("binder is trimmed and validated", async () => {
   await expect(runScan(db, client(page), { ...input, page: 0 }, opts)).rejects.toBeInstanceOf(ValidationError)
   expect(await db.select().from(scans)).toHaveLength(0)
 })
+
+async function committedPage(binder: string, page: number, cardId: string, variant: string) {
+  const [s] = await db
+    .insert(scans)
+    .values({ imageUrl: "u", imageWidth: 1, imageHeight: 1, binder, page, status: "committed" })
+    .returning()
+  await db.insert(scanResults).values({ scanId: s!.id, slot: 1, chosenCardId: cardId, variant, decision: "confirmed" })
+}
+
+test("a rescan doesn't default the claim for a card the page's previous scan already held", async () => {
+  await db.insert(collectionItems).values({ cardId: "base1-58", variant: "normal", quantity: 2 })
+  await committedPage("main", 3, "base1-58", "normal")
+  const { scanId } = await runScan(db, client(page), input, opts)
+  const results = await resultsOf(scanId)
+  // Slots 2, 3, 6–9 are Pikachu; the previous scan held one, so the first stays unclaimed and later ones default on.
+  expect(results[1]?.claimManual).toBe(false)
+  expect(results[2]?.claimManual).toBe(true)
+})
+
+test("a scan of a different page still defaults the claim", async () => {
+  await db.insert(collectionItems).values({ cardId: "base1-58", variant: "normal", quantity: 1 })
+  await committedPage("Main", 2, "base1-58", "normal")
+  const { scanId } = await runScan(db, client(page), input, opts)
+  expect((await resultsOf(scanId))[1]?.claimManual).toBe(true)
+})
+
+test("a defaulted claim takes the typed-in copy's condition", async () => {
+  await db.insert(collectionItems).values({ cardId: "base1-58", variant: "normal", quantity: 1, condition: "LP" })
+  const { scanId } = await runScan(db, client(page), input, opts)
+  const results = await resultsOf(scanId)
+  expect(results[1]).toMatchObject({ claimManual: true, condition: "LP" })
+  expect(results[0]?.condition).toBe("NM")
+})

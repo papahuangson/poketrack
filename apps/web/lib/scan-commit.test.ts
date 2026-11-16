@@ -172,3 +172,20 @@ test("merging into a hand-entered lot in the same binder keeps its source", asyn
   await commitScan(db, (await seedScan(db, { pockets: [{ card: "base1-58" }] })).scanId)
   expect(await lots()).toEqual([{ cardId: "base1-58", binder: "Main", quantity: 2, source: "manual" }])
 })
+
+test("an identical rescan keeps each lot's id and paid price", async () => {
+  await commitScan(db, (await seedScan(db, { pockets: [{ card: "base1-58" }] })).scanId)
+  const [before] = await db.select().from(collectionItems)
+  await db.update(collectionItems).set({ paidUsd: 5, acquiredOn: "2026-11-01" }).where(eq(collectionItems.id, before!.id))
+  await commitScan(db, (await seedScan(db, { pockets: [{ card: "base1-58" }] })).scanId)
+  const after = await db.select().from(collectionItems)
+  expect(after).toHaveLength(1)
+  expect(after[0]).toMatchObject({ id: before!.id, quantity: 1, paidUsd: 5, acquiredOn: "2026-11-01" })
+})
+
+test("a claim and then an identical rescan with the claim off keeps the total", async () => {
+  await db.insert(collectionItems).values({ cardId: "base1-58", variant: "normal", quantity: 2 })
+  await commitScan(db, (await seedScan(db, { pockets: [{ card: "base1-58", claimManual: true }] })).scanId)
+  await commitScan(db, (await seedScan(db, { pockets: [{ card: "base1-58", claimManual: false }] })).scanId)
+  expect((await lots()).reduce((n, l) => n + l.quantity, 0)).toBe(2)
+})

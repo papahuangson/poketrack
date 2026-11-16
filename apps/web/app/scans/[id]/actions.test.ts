@@ -69,3 +69,25 @@ test("an unknown card is rejected", async () => {
   const { resultIds } = await seedScan(db, { pockets: [{ card: "base1-58" }] })
   expect(await updateSlotAction(resultIds[0]!, { chosenCardId: "nope-1" })).toMatchObject({ ok: false, field: "chosenCardId" })
 })
+
+test("choosing a card the page's previous scan already held leaves the claim off", async () => {
+  await db.insert(collectionItems).values({ cardId: "sv3pt5-151", variant: "holofoil" })
+  await seedScan(db, { status: "committed", pockets: [{ card: "sv3pt5-151" }] })
+  const { resultIds } = await seedScan(db, { pockets: [{ card: "base1-58", decision: "pending" }] })
+  await updateSlotAction(resultIds[0]!, { chosenCardId: "sv3pt5-151" })
+  expect((await stored(resultIds[0]!)).claimManual).toBe(false)
+})
+
+test("turning the claim on takes the typed-in copy's condition", async () => {
+  await db.insert(collectionItems).values({ cardId: "base1-58", variant: "normal", condition: "MP" })
+  const { resultIds } = await seedScan(db, { pockets: [{ card: "base1-58" }] })
+  await updateSlotAction(resultIds[0]!, { claimManual: true })
+  expect(await stored(resultIds[0]!)).toMatchObject({ claimManual: true, condition: "MP" })
+})
+
+test("choosing a card that claims a copy takes that copy's condition", async () => {
+  await db.insert(collectionItems).values({ cardId: "sv3pt5-151", variant: "holofoil", condition: "HP" })
+  const { resultIds } = await seedScan(db, { pockets: [{ card: "base1-58", decision: "pending" }] })
+  await updateSlotAction(resultIds[0]!, { chosenCardId: "sv3pt5-151" })
+  expect(await stored(resultIds[0]!)).toMatchObject({ claimManual: true, condition: "HP" })
+})

@@ -1,22 +1,20 @@
-import { and, collectionItems, eq, ne, scanResults, scans, sql, type Db } from "@poketrack/db"
+import { and, collectionItems, eq, inArray, ne, scanResults, scans, sql, type Db } from "@poketrack/db"
 import { addItem } from "./collection"
 import { ValidationError } from "./errors"
 
 type CommitResult = { added: number; replaced: boolean }
 
-async function takeOneCopy(tx: Db, id: number): Promise<{ removed: boolean } | null> {
+// Lowers a lot by one copy, never below 0. Lots that reach 0 are kept until the end of the commit so a
+// re-add of the same card merges back into them (keeping id, paid price and dates); emptied ones are then deleted.
+async function takeOneCopy(tx: Db, id: number, touched: Set<number>): Promise<boolean> {
   const [lot] = await tx.select({ quantity: collectionItems.quantity }).from(collectionItems).where(eq(collectionItems.id, id))
-  if (!lot) return null
-  const left = Math.max(0, lot.quantity - 1)
-  if (left === 0) {
-    await tx.delete(collectionItems).where(eq(collectionItems.id, id))
-    return { removed: true }
-  }
-  await tx.update(collectionItems).set({ quantity: left }).where(eq(collectionItems.id, id))
-  return { removed: false }
+  if (!lot) return false
+  await tx.update(collectionItems).set({ quantity: Math.max(0, lot.quantity - 1) }).where(eq(collectionItems.id, id))
+  touched.add(id)
+  return true
 }
 
-async function claimManualCopy(tx: Db, cardId: string, variant: string): Promise<{ id: number; paidUsd: number | null; removed: boolean } | null> {
+async function claimManualCopy(tx: Db, cardId: string, variant: string, touched: Set<number>): Promise<{ id: number; paidUsd: number | null } | null> {
   const [lot] = await tx
     .select({ id: collectionItems.id, paidUsd: collectionItems.paidUsd })
     .from(collectionItems)
@@ -31,8 +29,7 @@ async function claimManualCopy(tx: Db, cardId: string, variant: string): Promise
     .orderBy(collectionItems.id)
     .limit(1)
   if (!lot) return null
-  const taken = await takeOneCopy(tx, lot.id)
-  return taken ? { id: lot.id, paidUsd: lot.paidUsd, removed: taken.removed } : null
+  return (await takeOneCopy(tx, lot.id, touched)) ? { id: lot.id, paidUsd: lot.paidUsd } : null
 }
 
 async function commitScan(db: Db, scanId: number): Promise<CommitResult> {
@@ -52,6 +49,8 @@ async function commitScan(db: Db, scanId: number): Promise<CommitResult> {
       throw new ValidationError("scan", "Confirm or reject every pocket first.")
     }
 
+    const touched = new Set<number>()
+
     // 1. Undo the page's previous scan.
     const [previous] = await tx
       .select({ id: scans.id })
@@ -70,7 +69,7 @@ async function commitScan(db: Db, scanId: number): Promise<CommitResult> {
         .select({ itemId: scanResults.collectionItemId })
         .from(scanResults)
         .where(and(eq(scanResults.scanId, previous.id), eq(scanResults.decision, "confirmed"), eq(scanResults.empty, false)))
-      for (const { itemId } of old) if (itemId !== null) await takeOneCopy(tx, itemId)
+      for (const { itemId } of old) if (itemId !== null) await takeOneCopy(tx, itemId, touched)
       await tx.update(scans).set({ status: "superseded" }).where(eq(scans.id, previous.id))
     }
 
@@ -78,7 +77,7 @@ async function commitScan(db: Db, scanId: number): Promise<CommitResult> {
     let added = 0
     for (const pocket of pockets) {
       if (pocket.empty || pocket.decision !== "confirmed" || !pocket.chosenCardId || !pocket.variant) continue
-      const claimed = pocket.claimManual ? await claimManualCopy(tx, pocket.chosenCardId, pocket.variant) : null
+      const claimed = pocket.claimManual ? await claimManualCopy(tx, pocket.chosenCardId, pocket.variant, touched) : null
       const { id, merged } = await addItem(tx, {
         cardId: pocket.chosenCardId,
         variant: pocket.variant,
@@ -95,12 +94,17 @@ async function commitScan(db: Db, scanId: number): Promise<CommitResult> {
       }
       await tx
         .update(scanResults)
-        .set({ collectionItemId: id, claimedFromItemId: claimed && !claimed.removed ? claimed.id : null })
+        .set({ collectionItemId: id, claimedFromItemId: claimed?.id ?? null })
         .where(eq(scanResults.id, pocket.id))
       added++
     }
 
-    // 3. Mark committed.
+    // 3. Delete lots this commit emptied (their scan_results links are nulled by the FK).
+    if (touched.size > 0) {
+      await tx.delete(collectionItems).where(and(inArray(collectionItems.id, [...touched]), sql`${collectionItems.quantity} <= 0`))
+    }
+
+    // 4. Mark committed.
     await tx.update(scans).set({ status: "committed", committedAt: new Date() }).where(eq(scans.id, scanId))
     return { added, replaced: previous !== undefined }
   })
