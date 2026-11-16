@@ -7,6 +7,9 @@ const redirect = vi.fn((to: string) => {
 vi.mock("next/headers", () => ({ cookies: async () => ({ set }) }))
 vi.mock("next/navigation", () => ({ redirect: (to: string) => redirect(to) }))
 
+let db: import("@poketrack/db").Db
+vi.mock("@/lib/db", () => ({ getDb: () => db }))
+const { createTestDb } = await import("@poketrack/db/testing")
 const { loginAction } = await import("./actions")
 const { SESSION_COOKIE, verifySession } = await import("@/lib/session")
 
@@ -17,7 +20,8 @@ const form = (passcode: string, next?: string) => {
   return f
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  db = await createTestDb()
   process.env.APP_PASSCODE = "pikachu-58"
   process.env.SESSION_SECRET = "s".repeat(40)
   set.mockClear()
@@ -49,4 +53,22 @@ test("next must be a local path", async () => {
 test("an unset passcode never logs in", async () => {
   delete process.env.APP_PASSCODE
   expect(await loginAction(undefined, form(""))).toEqual({ error: "That passcode isn't right." })
+})
+
+test("after 10 wrong guesses in 15 minutes even the right passcode is refused", async () => {
+  for (let i = 0; i < 10; i++) await loginAction(undefined, form(`wrong-${i}`))
+  expect(await loginAction(undefined, form("pikachu-58"))).toEqual({ error: "Too many tries. Wait 15 minutes and try again." })
+  expect(set).not.toHaveBeenCalled()
+})
+
+test("old wrong guesses don't count, and a successful sign-in clears the count", async () => {
+  const { sql } = await import("@poketrack/db")
+  for (let i = 0; i < 9; i++) await loginAction(undefined, form(`wrong-${i}`))
+  await expect(loginAction(undefined, form("pikachu-58"))).rejects.toMatchObject({ to: "/" })
+  for (let i = 0; i < 9; i++) await loginAction(undefined, form(`wrong-${i}`))
+  await expect(loginAction(undefined, form("pikachu-58"))).rejects.toMatchObject({ to: "/" })
+  for (let i = 0; i < 9; i++) await loginAction(undefined, form(`wrong-${i}`))
+  await db.execute(sql`update login_failures set at = now() - interval '20 minutes'`)
+  for (let i = 0; i < 9; i++) await loginAction(undefined, form(`wrong-${i}`))
+  await expect(loginAction(undefined, form("pikachu-58"))).rejects.toMatchObject({ to: "/" })
 })

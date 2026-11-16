@@ -49,7 +49,7 @@ Use Neon's direct connection string for `pnpm db:migrate` and the pooled one for
 1. Import the GitHub repo and set the **root directory** to `apps/web`.
 2. Add environment variables: `DATABASE_URL` (Neon `main`) and `CRON_SECRET` (any long random string).
 3. Add the Phase 2 variables:
-   - `APP_PASSCODE`: the passcode you'll type to open the app.
+   - `APP_PASSCODE`: the passcode you'll type to open the app. Once Deployment Protection is off it is the only lock, so make it long and random (at least 4 random words or 16 random characters). After 10 wrong tries in 15 minutes, sign-in pauses for 15 minutes.
    - `SESSION_SECRET`: any long random string. It signs the sign-in cookie. Changing it, or changing the passcode, signs every device out.
    - `ANTHROPIC_API_KEY`: reads scan photos.
    - `ANTHROPIC_MODEL` (optional): the model for scans. Defaults to `claude-sonnet-5-5`.

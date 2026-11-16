@@ -174,4 +174,9 @@ const scanResults = pgTable(
   ],
 )
 
-export { cards, collectionItems, jobRuns, priceSnapshots, scanResults, scans, sets, watchlist }
+const loginFailures = pgTable("login_failures", {
+  id: serial("id").primaryKey(),
+  at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+})
+
+export { cards, collectionItems, jobRuns, loginFailures, priceSnapshots, scanResults, scans, sets, watchlist }

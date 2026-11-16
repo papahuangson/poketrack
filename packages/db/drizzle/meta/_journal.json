@@ -15,6 +15,13 @@
       "when": 1794789022342,
       "tag": "0001_absurd_silvermane",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794800720642,
+      "tag": "0002_glamorous_imperial_guard",
+      "breakpoints": true
     }
   ]
 }
