@@ -4,7 +4,8 @@ import { eq } from "drizzle-orm"
 import { beforeEach, expect, test } from "vitest"
 import { loadBinderPage } from "./binder-view"
 import { ValidationError } from "./errors"
-import { movePocketCopy, removePocketCopy, setLotDetails } from "./pocket-edit"
+import { addItem } from "./collection"
+import { editSurplus, movePocketCopy, removePocketCopy, removeSurplus, setLotDetails } from "./pocket-edit"
 import { commitScan } from "./scan-commit"
 import { commitPage, seedCards, seedScan } from "./scan-fixtures"
 
@@ -178,4 +179,87 @@ test("setLotDetails validates and saves", async () => {
   expect((await db.select().from(collectionItems))[0]).toMatchObject({ paidUsd: 4.25, acquiredOn: "2026-10-01", quantity: 2 })
   await setLotDetails(db, lot!.id, { paidCents: null, acquiredOn: null })
   expect((await db.select().from(collectionItems))[0]).toMatchObject({ paidUsd: null, acquiredOn: null })
+})
+
+const lot3 = async () => {
+  const { resultIds } = await commitPage(db, { pockets: [{ card: "base1-58" }] })
+  const { id } = await addItem(db, { cardId: "base1-58", variant: "normal", condition: "NM", quantity: 2, binder: "Main" })
+  return { id, resultId: resultIds[0]! }
+}
+const own = { variant: "normal", condition: "NM" as const, binder: "Main" }
+const full = async () =>
+  (await db.select().from(collectionItems).orderBy(collectionItems.id)).map((l) => ({ condition: l.condition, quantity: l.quantity, binder: l.binder }))
+
+test("quantity edits change only the surplus", async () => {
+  const { id } = await lot3()
+  await editSurplus(db, id, { ...own, quantity: 5 })
+  expect(await summary()).toEqual([{ condition: "NM", quantity: 6 }])
+  await editSurplus(db, id, { ...own, quantity: 0 })
+  expect(await summary()).toEqual([{ condition: "NM", quantity: 1 }])
+})
+
+test("changing condition moves only the surplus", async () => {
+  const { id, resultId } = await lot3()
+  await db.update(collectionItems).set({ paidUsd: 2, acquiredOn: "2026-10-01" })
+  const before = await pocket(resultId)
+  await editSurplus(db, id, { ...own, condition: "LP", quantity: 2 })
+  expect(await summary()).toEqual([
+    { condition: "NM", quantity: 1 },
+    { condition: "LP", quantity: 2 },
+  ])
+  expect(await pocket(resultId)).toEqual(before)
+  expect(before.collectionItemId).toBe(id)
+  expect((await db.select().from(collectionItems).orderBy(collectionItems.id))[1]).toMatchObject({ paidUsd: 2, acquiredOn: "2026-10-01", binder: "Main" })
+})
+
+test("changing binder moves the surplus into another binder's lot", async () => {
+  const { id } = await lot3()
+  await addItem(db, { cardId: "base1-58", variant: "normal", condition: "NM", quantity: 1, binder: "Trade" })
+  await editSurplus(db, id, { ...own, binder: " Trade ", quantity: 2 })
+  expect(await full()).toEqual([
+    { condition: "NM", quantity: 1, binder: "Main" },
+    { condition: "NM", quantity: 3, binder: "Trade" },
+  ])
+  await editSurplus(db, (await db.select().from(collectionItems).orderBy(collectionItems.id))[1]!.id, { ...own, binder: "", quantity: 3 })
+  expect((await full())[1]).toEqual({ condition: "NM", quantity: 3, binder: null })
+})
+
+test("a pocketless lot behaves like a normal edit", async () => {
+  const a = await addItem(db, { cardId: "base1-58", variant: "normal", condition: "NM", quantity: 2, binder: "Main" })
+  await addItem(db, { cardId: "base1-58", variant: "normal", condition: "LP", quantity: 1, binder: "Main" })
+  await editSurplus(db, a.id, { ...own, condition: "LP", quantity: 2 })
+  expect(await summary()).toEqual([{ condition: "LP", quantity: 3 }])
+  const [lp] = await db.select().from(collectionItems)
+  await editSurplus(db, lp!.id, { ...own, condition: "LP", quantity: 0 })
+  expect(await summary()).toEqual([])
+})
+
+test("removeSurplus never touches pocketed copies", async () => {
+  const { id, resultId } = await lot3()
+  await removeSurplus(db, id)
+  expect(await summary()).toEqual([{ condition: "NM", quantity: 1 }])
+  expect((await pocket(resultId)).collectionItemId).toBe(id)
+  await removeSurplus(db, id)
+  expect(await summary()).toEqual([{ condition: "NM", quantity: 1 }])
+})
+
+test("surplus edits validate their input and a missing lot", async () => {
+  const { id } = await lot3()
+  expect((await failure(editSurplus(db, id, { ...own, quantity: -1 }))).field).toBe("quantity")
+  expect((await failure(editSurplus(db, id, { ...own, quantity: 1.5 }))).field).toBe("quantity")
+  expect((await failure(editSurplus(db, id, { ...own, quantity: 1000 }))).field).toBe("quantity")
+  expect((await failure(editSurplus(db, id, { ...own, variant: "holofoil", quantity: 2 }))).field).toBe("variant")
+  expect(await failure(editSurplus(db, 9999, { ...own, quantity: 1 }))).toMatchObject({ field: "lot", message: "That card is no longer in your collection." })
+  expect(await failure(removeSurplus(db, 9999))).toMatchObject({ field: "lot" })
+  expect(await summary()).toEqual([{ condition: "NM", quantity: 3 }])
+})
+
+test("a lot with fewer copies than pockets has no surplus to take", async () => {
+  const { resultIds } = await twoPikachu()
+  await db.update(collectionItems).set({ quantity: 1 })
+  const id = (await pocket(resultIds[0]!)).collectionItemId!
+  await removeSurplus(db, id)
+  expect(await summary()).toEqual([{ condition: "NM", quantity: 1 }])
+  await editSurplus(db, id, { ...own, quantity: 2 })
+  expect(await summary()).toEqual([{ condition: "NM", quantity: 3 }])
 })
