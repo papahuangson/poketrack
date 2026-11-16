@@ -109,5 +109,5 @@ async function runScan(db: Db, client: ModelClient, raw: NewScan, opts: RunOptio
   }
 }
 
-export { AUTO_CONFIRM, runScan }
+export { AUTO_CONFIRM, hasManualLot, runScan }
 export type { NewScan, RunOptions }
