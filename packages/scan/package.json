@@ -11,8 +11,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
     "@poketrack/db": "workspace:*",
-    "@poketrack/jobs": "workspace:*",
-    "drizzle-orm": "^0.45.0"
+    "@poketrack/jobs": "workspace:*"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.3.0",

@@ -1,6 +1,6 @@
 import type { Candidate, Db, SlotCues } from "@poketrack/db"
 import { normalizeText } from "@poketrack/jobs"
-import { sql, type SQL } from "drizzle-orm"
+import { sql, type SQL } from "@poketrack/db"
 import { parseNumber } from "./parse"
 
 type SlotRead = {
