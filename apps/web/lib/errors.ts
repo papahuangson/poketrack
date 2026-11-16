@@ -1,11 +1,1 @@
-class ValidationError extends Error {
-  field: string
-
-  constructor(field: string, message: string) {
-    super(message)
-    this.name = "ValidationError"
-    this.field = field
-  }
-}
-
-export { ValidationError }
+export { ValidationError } from "@poketrack/db/errors"
