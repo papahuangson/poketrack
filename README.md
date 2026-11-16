@@ -102,6 +102,19 @@ On your phone, open the app, sign in with the passcode, and tap **Scan a page**.
 - **Typed in earlier, use that copy** moves a card you entered by hand into this binder instead of counting it twice.
 - Scanning a page you've already added replaces what that page added before. The grid shows what will change before you tap **Replace page**.
 
+## Binders
+
+**Binders** in the top nav shows a binder the way it sits on the shelf: one 9-pocket page at a time, each card in the pocket it was scanned in.
+
+- Flip with the arrows, the page dots, the left and right arrow keys, or a swipe on a phone. A page that hasn't been scanned shows empty pockets and a **Scan this page** link.
+- **Find a card** searches every card you own, in any binder. Picking a result jumps to its page with the pocket highlighted.
+- Tap a card for its details: price and 90-day trend, where your other copies are, and **Edit** and **Remove**. Edits from a pocket change only the copy in that pocket. Paid price and acquired date are shared by identical copies in the same binder, and the form says so.
+- Cards you typed in for a binder that aren't in a scanned pocket are listed under the last page as **Not on a page yet**. Editing there never touches the copies in pockets.
+- A dimmed card marked **Not in your collection** means the scan saw it there but the copy has since been removed from the Collection list.
+- Rescanning a page keeps the variant and condition you set for each pocket, as long as the same card is still in the same pocket. To change which card is in a pocket, rescan the page.
+
+The binder view adds one database migration (`scan_results.removed_at`). Run `pnpm db:migrate` before deploying it.
+
 ## Done check for Phase 2
 
 Scan 3 real binder pages, including one with holo cards in sleeves. Each page should need **2 or fewer corrections**: a pocket where you picked a different card, rejected a card that was there, or had to search for it.
