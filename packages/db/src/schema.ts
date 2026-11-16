@@ -167,6 +167,7 @@ const scanResults = pgTable(
     claimManual: boolean("claim_manual").notNull().default(false),
     collectionItemId: integer("collection_item_id").references(() => collectionItems.id, { onDelete: "set null" }),
     claimedFromItemId: integer("claimed_from_item_id").references(() => collectionItems.id, { onDelete: "set null" }),
+    removedAt: timestamp("removed_at", { withTimezone: true }),
   },
   (t) => [
     uniqueIndex("scan_results_scan_slot").on(t.scanId, t.slot),

@@ -22,6 +22,13 @@
       "when": 1794800720642,
       "tag": "0002_glamorous_imperial_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794865143380,
+      "tag": "0003_illegal_quicksilver",
+      "breakpoints": true
     }
   ]
 }
